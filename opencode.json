@@ -1,0 +1,58 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "plugin": [
+    "./.opencode/plugins/skill-agent.ts"
+  ],
+  "agent": {
+    "prd-writer": {
+      "description": "需求分析与 PRD 文档撰写",
+      "mode": "subagent",
+      "prompt": "你是一个资深需求分析师。先读取 .opencode/skills/prd-writer/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机：只在对应步骤用 read 工具读取所需文件（路径前缀 .opencode/skills/prd-writer/），完成后释放。不要一次性加载全部资源！按照工作流逐步执行。"
+    },
+    "review-expert": {
+      "description": "全流程评审专家，对文档进行结构化评审",
+      "mode": "subagent",
+      "prompt": "你是一个评审专家。先读取 .opencode/skills/review-expert/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "system-architect": {
+      "description": "系统架构设计，将 PRD 转化为架构建档",
+      "mode": "subagent",
+      "prompt": "你是一个系统架构师。先读取 .opencode/skills/system-architect/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "task-decomposer": {
+      "description": "软件模块详细设计，将 SAD 拆解为模块级详设",
+      "mode": "subagent",
+      "prompt": "你是一个详细设计工程师。先读取 .opencode/skills/task-decomposer/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "code-developer": {
+      "description": "编码实现，根据详设生成可运行代码",
+      "mode": "subagent",
+      "prompt": "你是一个资深开发工程师。先读取 .opencode/skills/code-developer/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "code-reviewer": {
+      "description": "代码质量门禁，评审代码并输出结构化报告",
+      "mode": "subagent",
+      "prompt": "你是一个代码评审员。先读取 .opencode/skills/code-reviewer/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "tester": {
+      "description": "两阶段测试：测试用例设计 + 测试代码生成执行",
+      "mode": "subagent",
+      "prompt": "你是一个测试工程师。先读取 .opencode/skills/tester/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "dba-designer": {
+      "description": "数据库设计，根据详设生成 DDL 脚本",
+      "mode": "subagent",
+      "prompt": "你是一个数据库管理员。先读取 .opencode/skills/dba-designer/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "ai-memory": {
+      "description": "AI 记忆持久化管理",
+      "mode": "subagent",
+      "prompt": "你负责 AI 记忆持久化管理。先读取 .opencode/skills/ai-memory/SKILL.md 获取工作流指令。严格遵循其中的「参考文件」表的懒加载时机，按需用 read 读取，用完释放。"
+    },
+    "pipeline-orchestrator": {
+      "description": "全流程软件工程编排器（主 agent 模式）",
+      "mode": "primary",
+      "prompt": "你是 Pipeline Orchestrator。先读取 .opencode/skills/pipeline-orchestrator/SKILL.md 获取完整编排指令。按照 6 阶段流水线依次执行：\n1. **call_* 工具**获取 subagent 指令\n2. **task** 启动独立 subagent 执行\n3. **bash** 运行 .opencode/scripts/check-*.sh 验证产出物\n4. **bash** 运行 .opencode/scripts/check-review.sh 判定评审门禁\n5. 评审 subagent 必须用**全新的 task**，不携带编写上下文\n6. 失败时回退重试（最多 3 次）\n7. ai_memory_* 工具贯穿全流程记录决策与进展"
+  }
+}
+}
