@@ -21,6 +21,15 @@ Skills are located under `.opencode/skills/{skill-name}/` and are exposed as cus
 | ai-memory | AI 记忆持久化（贯穿全流程桥梁） | — | `call_ai_memory` |
 | pipeline-orchestrator | 全流程编排器 | `doc/pipeline/` | `call_pipeline_orchestrator` |
 
+## Project Rules
+
+Rules under `.opencode/rules/` are loaded via `instructions` in `opencode.json`. These apply to **增量需求 / Bug 修复** scenarios only (not full greenfield projects).
+
+| Rule File | Purpose |
+|-----------|---------|
+| `precise-location.md` | 三步定位流程（模块→层级→文件），禁止不经定位直接扫描代码 |
+| `endpoint-lock.md` | 端稳定分级（API/Schema/接口），发现不对齐时 STOP→READ→REPORT→WAIT |
+
 ## Skill directory layout
 
 ```

@@ -43,6 +43,10 @@ echo "  ├─ 复制 scripts/..."
 cp -r "$OPTSRC/scripts" "$OPTDST/"
 ok "scripts/ ($(find "$OPTDST/scripts" -name '*.sh' | wc -l) scripts)"
 
+echo "  ├─ 复制 rules/..."
+cp -r "$OPTSRC/rules" "$OPTDST/"
+ok "rules/ ($(find "$OPTDST/rules" -name '*.md' | wc -l) rules)"
+
 # .gitignore
 cp "$OPTSRC/.gitignore" "$OPTDST/" 2>/dev/null || true
 
@@ -86,9 +90,13 @@ ERRORS=0
 [ -d "$TARGET/.opencode/plugins" ] && ok ".opencode/plugins/" || { fail ".opencode/plugins/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/skills" ] && ok ".opencode/skills/" || { fail ".opencode/skills/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
+[ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }
 
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
 [ "$SKILL_COUNT" -eq 10 ] && ok "$SKILL_COUNT/10 skills" || info "skills: $SKILL_COUNT/10"
+
+RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
+[ "$RULE_COUNT" -eq 2 ] && ok "$RULE_COUNT/2 rules" || info "rules: $RULE_COUNT/2"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
 [ "$SCRIPT_COUNT" -eq 8 ] && ok "$SCRIPT_COUNT/8 scripts" || info "scripts: $SCRIPT_COUNT/8"
