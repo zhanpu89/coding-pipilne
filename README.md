@@ -21,10 +21,10 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 ```
 
 安装脚本会自动完成：
-1. 复制 `.opencode/`（skills/plugins/scripts）
+1. 复制 `.opencode/`（skills/plugins/scripts/rules）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json, AGENTS.md, README.md）
-4. 验证完整性（10 skills, 8 scripts）
+4. 验证完整性（10 skills, 8 scripts, 2 rules）
 
 ### 验证安装
 
@@ -168,6 +168,17 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 
 ---
 
+## 项目规则（Project Rules）
+
+针对**增量需求 / Bug 修复**场景，系统内置两条 AI 行为约束规则，通过 `opencode.json` 的 `instructions` 字段自动加载：
+
+| 规则 | 文件 | 作用 |
+|------|------|------|
+| 精准定位规则 | `.opencode/rules/precise-location.md` | 禁止 AI 不经定位直接扫描代码，按模块→层级→文件三步定位 |
+| 端锁定规则 | `.opencode/rules/endpoint-lock.md` | 禁止 AI 擅自修改 API/数据库契约，发现不对齐时 STOP→READ→REPORT→WAIT |
+
+> 全量新建项目走 pipeline-orchestrator 流程，不触发这些规则。
+
 ## 配置说明
 
 ### opencode.json
@@ -175,6 +186,7 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 ```json
 {
   "$schema": "https://opencode.ai/config.json",
+  "instructions": [".opencode/rules/*.md"],
   "plugin": [
     "./.opencode/plugins/skill-agent.ts"
   ],
@@ -193,6 +205,7 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 }
 ```
 
+- **instructions**: 加载 AI 行为约束规则文件（支持 glob 通配符）
 - **plugin**: 注册自定义工具插件
 - **agent**: 9 个 `mode: "subagent"` 供 `task` 启动，1 个 `mode: "primary"`（编排器）
 
@@ -228,6 +241,9 @@ your-project/
     │   └── pipeline-orchestrator/
     ├── plugins/
     │   └── skill-agent.ts           # 插件：暴露 10 个 call_* 工具
+    ├── rules/                       # AI 行为约束规则（增量/Bug修复场景）
+    │   ├── precise-location.md      # 精准定位规则，禁止不经定位扫描代码
+    │   └── endpoint-lock.md         # 端锁定规则，禁止擅自修改契约接口
     ├── scripts/                     # 验证脚本（8 个 bash 脚本）
     │   ├── check-prd.sh
     │   ├── check-arch.sh
