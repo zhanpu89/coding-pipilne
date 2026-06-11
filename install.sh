@@ -71,15 +71,13 @@ cd "$SCRIPT_DIR"
 ok "npm 依赖安装完成"
 
 # ── 3. 复制根目录文件 ──
-for f in opencode.json AGENTS.md README.md; do
+for f in opencode.json; do
   if [ -f "$SCRIPT_DIR/$f" ]; then
     cp "$SCRIPT_DIR/$f" "$TARGET/"
     ok "$f"
   fi
 done
 
-# ── 4. 复制 .project_name（可选） ──
-[ -f "$SCRIPT_DIR/.project_name" ] && cp "$SCRIPT_DIR/.project_name" "$TARGET/" && ok ".project_name"
 
 # ── 5. 验证 ──
 echo ""
@@ -110,7 +108,7 @@ echo -e "${GREEN}═════════════════════
 echo -e "${GREEN}  安装完成！${NC}"
 echo -e "${GREEN}  现在可以在 $TARGET 中启动 OpenCode:${NC}"
 echo -e "${GREEN}    opencode${NC}"
-echo -e "${GREEN}  查看 README.md 获取详细使用说明${NC}"
+echo -e "${GREEN}  查看 opencode.json 获取配置说明${NC}"
 echo -e "${GREEN}══════════════════════════════════════════${NC}"
 echo ""
 echo "  快速验证 — 在 OpenCode 中输入:"
