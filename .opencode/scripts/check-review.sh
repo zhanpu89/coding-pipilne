@@ -10,8 +10,8 @@ if [ ! -d "$REVIEW_DIR" ]; then
   exit 3
 fi
 
-# 找最新的评审报告
-LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" \) | xargs ls -t 2>/dev/null | head -1)
+# 找最新的评审报告（使用 null 分隔符处理含空格文件名）
+LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" \) -print0 | xargs -0 ls -t 2>/dev/null | head -1)
 if [ -z "$LATEST" ]; then
   echo "❌ 未找到评审报告"
   exit 3

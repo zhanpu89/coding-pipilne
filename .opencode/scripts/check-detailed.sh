@@ -10,13 +10,17 @@ if [ ! -d "$DETAILED_DIR" ]; then
   exit 1
 fi
 
-# 检查详设文档 (排除模板和通用文件)
-DESIGN_FILES=$(find "$DETAILED_DIR" -maxdepth 1 -name "*.md" ! -name "编码规范.md" ! -name "项目规则.md" ! -name "_PROGRESS.md" 2>/dev/null)
-if [ -z "$DESIGN_FILES" ]; then
+# 收集详设文档（使用数组处理含空格文件名）
+DESIGN_FILES=()
+while IFS= read -r -d '' f; do
+  DESIGN_FILES+=("$f")
+done < <(find "$DETAILED_DIR" -maxdepth 1 -name "*.md" ! -name "编码规范.md" ! -name "项目规则.md" ! -name "_PROGRESS.md" -print0 2>/dev/null)
+
+if [ ${#DESIGN_FILES[@]} -eq 0 ]; then
   echo "❌ 没有详设文档"
   ERRORS=$((ERRORS + 1))
 else
-  for f in $DESIGN_FILES; do
+  for f in "${DESIGN_FILES[@]}"; do
     SIZE=$(wc -c < "$f")
     echo "  $(basename "$f") ($SIZE bytes)"
     [ "$SIZE" -lt 500 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))

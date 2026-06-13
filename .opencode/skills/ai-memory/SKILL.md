@@ -14,27 +14,27 @@ description: >
 
 ### 翻笔记（开始或接续工作时）
 
-主动调用 `ai_memory_init_session(project_name, branch_name)`。有进行中任务则问用户要继续哪个，然后按需深入 `ai_memory_get_summary_by_id()` 或 `ai_memory_list_recent_sessions()`。
+主动调用 `ai_memory_memory_init_session(project_name, branch_name)`。有进行中任务则问用户要继续哪个，然后按需深入 `ai_memory_memory_get_summary(session_id=...)` 或 `ai_memory_memory_list_recent(limit=10)`。
 
 ### 查历史（遇到似曾相识的问题时）
 
-先搜不要凭空开始：`ai_memory_search_summaries(query, use_vector=True)` 语义搜索优先，`ai_memory_search_summaries_fts(query)` 精确搜索。找到后告诉用户"之前做过类似的事"。
+先搜不要凭空开始：`ai_memory_memory_search_summaries(query=关键词)`。内部自动按语义→全文→关键词三级降级搜索。找到后告诉用户"之前做过类似的事"。
 
 ### 随手记（发现重要事情的当下）
 
-`ai_memory_add_decision(session_id, decision_type, description, reasoning)`。值得记：不明显的技术选择、绕过的坑、架构方向。不值得记：常规操作。
+`ai_memory_memory_add_decision(session_id, decision_type, description, reasoning)`。值得记：不明显的技术选择、绕过的坑、架构方向。不值得记：常规操作。
 
 ### 更新进度（状态变化时）
 
-`ai_memory_update_summary(session_id, new_status, updated_content)`。任务推进/阻塞/方向改变时调用。
+`ai_memory_memory_update_summary(session_id, new_status, updated_content)`。任务推进/阻塞/方向改变时调用。
 
 ### 整理归档（一段工作结束时）
 
-用户说完成了或阶段目标达成→先问用户打算记什么，确认后 `ai_memory_save_summary(session_id, task_title, summary_content, status, next_steps, tags, ...)`。
+用户说完成了或阶段目标达成→先问用户打算记什么，确认后 `ai_memory_memory_save_summary(session_id, task_title, summary_content, file_paths, project_name, status, next_steps, tags, module, branch_name)`。
 
 ### 其他
 
-`ai_memory_weekly_review(project_name)` — 用户说"本周总结"时；`ai_memory_maintenance()` — 用户说"整理记忆库"时。
+`ai_memory_memory_weekly_review(project_name)` — 用户说"本周总结"时；`ai_memory_memory_maintenance()` — 用户说"整理记忆库"时。
 
 ## 项目上下文识别
 

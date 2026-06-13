@@ -10,17 +10,21 @@ if [ ! -d "$DB_DIR" ]; then
   exit 1
 fi
 
-SQL_FILES=$(find "$DB_DIR" -name "*.sql" 2>/dev/null)
-if [ -z "$SQL_FILES" ]; then
+# 收集 SQL 文件（使用数组处理含空格文件名）
+SQL_FILES=()
+while IFS= read -r -d '' f; do
+  SQL_FILES+=("$f")
+done < <(find "$DB_DIR" -name "*.sql" -print0 2>/dev/null)
+
+if [ ${#SQL_FILES[@]} -eq 0 ]; then
   echo "❌ 没有 .sql 文件"
   ERRORS=$((ERRORS + 1))
 else
-  for f in $SQL_FILES; do
+  for f in "${SQL_FILES[@]}"; do
     SIZE=$(wc -c < "$f")
     echo "  $(basename "$f") ($SIZE bytes)"
     [ "$SIZE" -lt 50 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
 
-    # 检查基本 SQL 语法
     if ! grep -qi "CREATE TABLE\|ALTER TABLE\|CREATE INDEX" "$f" 2>/dev/null; then
       echo "⚠️  没有 CREATE TABLE/INDEX 语句"
       ERRORS=$((ERRORS + 1))
@@ -29,8 +33,12 @@ else
 fi
 
 # 检查 DDL 设计说明文档
-DOC_FILES=$(find "$DB_DIR" -name "*.md" 2>/dev/null)
-if [ -z "$DOC_FILES" ]; then
+DOC_COUNT=0
+while IFS= read -r -d '' f; do
+  DOC_COUNT=$((DOC_COUNT + 1))
+done < <(find "$DB_DIR" -name "*.md" -print0 2>/dev/null)
+
+if [ "$DOC_COUNT" -eq 0 ]; then
   echo "⚠️ 没有数据库设计说明文档"
   ERRORS=$((ERRORS + 1))
 fi

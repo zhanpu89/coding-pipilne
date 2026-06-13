@@ -23,12 +23,14 @@ Skills are located under `.opencode/skills/{skill-name}/` and are exposed as cus
 
 ## Project Rules
 
-Rules under `.opencode/rules/` are loaded via `instructions` in `opencode.json`. These apply to **增量需求 / Bug 修复** scenarios only (not full greenfield projects).
+Rules under `.opencode/rules/` — **前 3 条常加载**（通过 `instructions` 在 session 启动时注入），**doc-alignment.md 按需加载**（由 code-developer / pipeline-orchestrator 在编码阶段自行读取）。这些均适用于 **增量需求 / Bug 修复** scenarios only (not full greenfield projects).
 
-| Rule File | Purpose |
-|-----------|---------|
-| `precise-location.md` | 三步定位流程（模块→层级→文件），禁止不经定位直接扫描代码 |
-| `endpoint-lock.md` | 端稳定分级（API/Schema/接口），发现不对齐时 STOP→READ→REPORT→WAIT |
+| Rule File | Purpose | 加载策略 |
+|-----------|---------|---------|
+| `precise-location.md` | 三步定位流程（模块→层级→文件），禁止不经定位直接扫描代码 | ⚡ 常加载 |
+| `endpoint-lock.md` | 端稳定分级（API/Schema/接口），发现不对齐时 STOP→READ→REPORT→WAIT | ⚡ 常加载 |
+| `code-discipline.md` | 编码纪律（先思考再编码/简洁优先/手术式修改/目标驱动执行），来自 CLAUDE.md | ⚡ 常加载 |
+| `doc-alignment.md` | 文档对齐（代码与文档同步修改，杜绝设计与代码漂移） | 🌀 按需（code-developer / pipeline-orchestrator Phase 5） |
 
 ## Skill directory layout
 

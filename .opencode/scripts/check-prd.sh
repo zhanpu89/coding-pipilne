@@ -10,13 +10,18 @@ if [ ! -d "$PRD_DIR" ]; then
   exit 1
 fi
 
-FILES=$(find "$PRD_DIR" -name "*.md" 2>/dev/null)
-if [ -z "$FILES" ]; then
+# 收集文件列表
+FILES=()
+while IFS= read -r -d '' f; do
+  FILES+=("$f")
+done < <(find "$PRD_DIR" -name "*.md" -print0 2>/dev/null)
+
+if [ ${#FILES[@]} -eq 0 ]; then
   echo "❌ PRD 目录下没有 .md 文件"
   exit 1
 fi
 
-for f in $FILES; do
+for f in "${FILES[@]}"; do
   SIZE=$(wc -c < "$f")
   if [ "$SIZE" -lt 100 ]; then
     echo "⚠️ 文件过小(＜100B): $f"
@@ -27,7 +32,7 @@ for f in $FILES; do
 done
 
 # 检查关键章节
-for f in $FILES; do
+for f in "${FILES[@]}"; do
   if ! grep -q "## " "$f" 2>/dev/null; then
     echo "⚠️ 缺少 Markdown 章节标题: $f"
     ERRORS=$((ERRORS + 1))

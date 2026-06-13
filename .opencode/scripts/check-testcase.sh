@@ -10,13 +10,17 @@ if [ ! -d "$TESTER_DIR" ]; then
   exit 1
 fi
 
-TC_FILES=$(find "$TESTER_DIR" -name "*测试用例*" -o -name "*testcase*" 2>/dev/null)
-if [ -z "$TC_FILES" ]; then
+TC_FILES=()
+while IFS= read -r -d '' f; do
+  TC_FILES+=("$f")
+done < <(find "$TESTER_DIR" \( -name "*测试用例*" -o -name "*testcase*" \) -print0 2>/dev/null)
+
+if [ ${#TC_FILES[@]} -eq 0 ]; then
   echo "❌ 没有测试用例文档"
   exit 1
 fi
 
-for f in $TC_FILES; do
+for f in "${TC_FILES[@]}"; do
   SIZE=$(wc -c < "$f")
   echo "  $(basename "$f") ($SIZE bytes)"
   [ "$SIZE" -lt 200 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))

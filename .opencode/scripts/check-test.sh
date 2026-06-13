@@ -8,23 +8,30 @@ ERRORS=0
 
 # 检查测试用例文档
 if [ -d "$TESTER_DIR" ]; then
-  TC_FILES=$(find "$TESTER_DIR" -name "*测试用例*" -o -name "*testcase*" 2>/dev/null)
-  if [ -z "$TC_FILES" ]; then
+  TC_FILES=()
+  while IFS= read -r -d '' f; do
+    TC_FILES+=("$f")
+  done < <(find "$TESTER_DIR" \( -name "*测试用例*" -o -name "*testcase*" \) -print0 2>/dev/null)
+
+  if [ ${#TC_FILES[@]} -eq 0 ]; then
     echo "❌ 没有测试用例文档"
     ERRORS=$((ERRORS + 1))
   else
-    for f in $TC_FILES; do
+    for f in "${TC_FILES[@]}"; do
       echo "  ✅ 用例: $(basename "$f") ($(wc -c < "$f") bytes)"
     done
   fi
 
-  # 检查测试报告
-  REPORT_FILES=$(find "$TESTER_DIR" -name "*测试报告*" -o -name "*report*" 2>/dev/null)
-  if [ -z "$REPORT_FILES" ]; then
+  REPORT_FILES=()
+  while IFS= read -r -d '' f; do
+    REPORT_FILES+=("$f")
+  done < <(find "$TESTER_DIR" \( -name "*测试报告*" -o -name "*report*" \) -print0 2>/dev/null)
+
+  if [ ${#REPORT_FILES[@]} -eq 0 ]; then
     echo "⚠️  没有测试报告"
     ERRORS=$((ERRORS + 1))
   else
-    for f in $REPORT_FILES; do
+    for f in "${REPORT_FILES[@]}"; do
       echo "  ✅ 报告: $(basename "$f")"
     done
   fi

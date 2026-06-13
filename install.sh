@@ -39,6 +39,9 @@ echo "  ├─ 复制 plugins/..."
 cp -r "$OPTSRC/plugins" "$OPTDST/"
 ok "plugins/ ($(find "$OPTDST/plugins" -name '*.ts' | wc -l) plugins)"
 
+echo "  ├─ 复制 tsconfig.json..."
+cp "$OPTSRC/tsconfig.json" "$OPTDST/" 2>/dev/null || info "tsconfig.json 不存在，跳过"
+
 echo "  ├─ 复制 scripts/..."
 cp -r "$OPTSRC/scripts" "$OPTDST/"
 ok "scripts/ ($(find "$OPTDST/scripts" -name '*.sh' | wc -l) scripts)"
@@ -56,17 +59,17 @@ cp "$OPTSRC/README.md" "$OPTDST/" 2>/dev/null || true
 # ── 2. 创建 / 更新 package.json ──
 PKG="$OPTDST/package.json"
 if [ -f "$PKG" ]; then
-  info "package.json 已存在，检查依赖..."
-  if ! grep -q '@opencode-ai/plugin' "$PKG" 2>/dev/null; then
-    fail "现有 package.json 缺少 @opencode-ai/plugin 依赖，请手动添加"
-  fi
+  info "package.json 已存在"
+elif [ -f "$OPTSRC/package.json" ]; then
+  cp "$OPTSRC/package.json" "$PKG"
+  ok "package.json 已创建（从源码同步）"
 else
-  echo '{"dependencies":{"@opencode-ai/plugin":"1.16.2"}}' > "$PKG"
-  ok "package.json 已创建"
+  echo '{"dependencies":{"@opencode-ai/plugin":"1.17.4"}}' > "$PKG"
+  ok "package.json 已创建（默认版本）"
 fi
 
-echo "  ├─ npm install..."
-cd "$OPTDST" && npm install --silent 2>&1 | tail -1
+echo "  ├─ npm install (生产依赖)..."
+cd "$OPTDST" && npm install --silent --omit=dev 2>&1 | tail -1
 cd "$SCRIPT_DIR"
 ok "npm 依赖安装完成"
 

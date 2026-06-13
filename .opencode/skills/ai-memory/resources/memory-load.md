@@ -41,7 +41,7 @@ init_session(project_name, branch_name)
 
 对每条 `in_progress` 任务：
 
-1. 调用 `get_summary_by_id(session_id)` 获取完整摘要
+1. 调用 `get_summary(session_id)` 获取完整摘要
    - **响应格式**：`{"success": True, "data": {...摘要对象...}}` 或 `{"success": False, "message": "..."}`
 2. 提取关键信息：核心目标、技术决策、问题与方案、涉及文件、下一步计划
 3. 向用户展示恢复提示：
@@ -58,9 +58,9 @@ init_session(project_name, branch_name)
 
 根据对话需要触发，不主动执行：
 
-- 调用 `list_recent_sessions(project_name, branch_name, limit=5)` 获取最近完成的任务列表（仅标题+状态，不加载全文）
+- 调用 `list_recent(limit=5, project_name=项目名, branch_name=分支名)` 获取最近完成的任务列表（仅标题+状态，不加载全文）
   - **响应格式**：`{"success": True, "data": [...]}`
-- 如果用户提到特定主题，调用 `search_summaries(query=主题, use_vector=True, limit=3)` 进行语义检索
+- 如果用户提到特定主题，调用 `search_summaries(query=主题, limit=3)` 进行检索（内部自动语义→全文→关键词三级降级）
   - **响应格式**：`{"success": True, "data": [...]}`
 
 原则：按需加载，避免一次性占用过多上下文窗口。

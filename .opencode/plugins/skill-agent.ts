@@ -62,38 +62,56 @@ async function readSkillMd(projectDir: string, skillId: string): Promise<string 
 
 function buildLazyLoadTable(skillId: string, skillMd: string): string {
   const lines = skillMd.split("\n")
-  const inTable: string[] = []
-  let capturing = false
 
-  for (const line of lines) {
-    if (/^\|\s*`?resources\//.test(line) || /^\|\s*`?templates\//.test(line)) {
-      capturing = true
-      inTable.push(line)
+  // Find "## 参考文件" header position
+  const headerIdx = lines.findIndex(l => /^##\s+参考文件/.test(l))
+  if (headerIdx === -1) return ""
+
+  // Collect table rows after the header
+  const tableRows: string[] = []
+  let inSep = false
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const line = lines[i].trim()
+    if (!line) continue
+    // Markdown table: first row after header is separator (| --- | --- |)
+    // Content rows start with |
+    if (line.startsWith("|") && line.includes("---")) {
+      inSep = true
       continue
     }
-    if (capturing) {
-      if (/^\|.*\|$/.test(line)) {
-        inTable.push(line)
-      } else {
-        capturing = false
-      }
+    if (inSep && line.startsWith("|")) {
+      tableRows.push(line)
+    } else if (inSep && !line.startsWith("|")) {
+      break // table ended
     }
   }
 
-  if (inTable.length === 0) return ""
+  if (tableRows.length === 0) return ""
+
+  // Find column indices from header row
+  const headerRow = lines.slice(headerIdx + 1).find(l => l.trim().startsWith("|") && !l.includes("---"))
+  if (!headerRow) return ""
+
+  const headerCols = headerRow.split("|").map(c => c.trim())
+  const fileIdx = headerCols.findIndex(c => /文件/.test(c))
+  const stepIdx = headerCols.findIndex(c => /(步骤|场景|加载时机)/.test(c))
+  if (fileIdx === -1) return ""
 
   const tablePath = `${SKILL_FILE_DIR}/${skillId}`
-  const entries = inTable
-    .filter(l => /^\|\s*`/.test(l))
-    .map(l => {
-      const cols = l.split("|").map(c => c.trim())
-      const file = cols[1]?.replace(/`/g, "") || ""
-      const step = cols[2]?.replace(/`/g, "") || ""
-      return `  - **\`${file}\`** → ${step}（路径：\`${tablePath}/${file}\`）`
-    })
-    .join("\n")
+  const entries: string[] = []
 
-  return `\n### 按需加载清单\n\n${entries}\n`
+  for (const row of tableRows) {
+    const cols = row.split("|").map(c => c.trim().replace(/^`|`$/g, ""))
+    const file = cols[fileIdx] || ""
+    // Only include resources/ and templates/ files (not doc/ or script paths)
+    if (!file.startsWith("resources/") && !file.startsWith("templates/")) continue
+    const step = stepIdx !== -1 ? (cols[stepIdx] || "") : ""
+    entries.push(`  - **\`${file}\`** → ${step}（路径：\`${tablePath}/${file}\`）`)
+  }
+
+  if (entries.length === 0) return ""
+
+  return `\n### 按需加载清单\n\n${entries.join("\n")}\n`
 }
 
 export default async function plugin() {
@@ -133,6 +151,15 @@ ${skillMd}${lazyTable}
 ---
 
 ## 执行规则
+
+### 通用纪律（来自 code-discipline.md）
+
+- **先思考再编码** — 陈述假设，摊开权衡。不确定就问。不默默选一个。
+- **简洁优先** — 最少代码/文档解决问题。不做未要求的抽象、灵活性或配置。
+- **手术式修改** — 只触碰必须改的。不"改进"无关代码，不重构没坏的东西。
+- **目标驱动** — 把任务转化为可验证的成功标准，"让它工作"不够具体。
+
+### 技能执行规则
 
 1. **懒加载** — 你只拥有 SKILL.md（工作流指令）。不要一次性加载全部资源！
 2. **按需读取** — 严格按照 SKILL.md 中"参考文件"表的"加载时机"列，在对应步骤用 \`read\` 工具读取文件。路径前缀为 \`${SKILL_FILE_DIR}/${skill.id}/\`。

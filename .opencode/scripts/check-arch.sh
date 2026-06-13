@@ -10,13 +10,17 @@ if [ ! -d "$ARCH_DIR" ]; then
   exit 1
 fi
 
-# 检查 SAD Markdown 文档
-SAD_FILES=$(find "$ARCH_DIR" -maxdepth 1 -name "*.md" 2>/dev/null)
-if [ -z "$SAD_FILES" ]; then
+# 检查 SAD Markdown 文档（使用数组处理含空格文件名）
+SAD_FILES=()
+while IFS= read -r -d '' f; do
+  SAD_FILES+=("$f")
+done < <(find "$ARCH_DIR" -maxdepth 1 -name "*.md" -print0 2>/dev/null)
+
+if [ ${#SAD_FILES[@]} -eq 0 ]; then
   echo "❌ 架构目录下没有 .md 文件"
   ERRORS=$((ERRORS + 1))
 else
-  for f in $SAD_FILES; do
+  for f in "${SAD_FILES[@]}"; do
     SIZE=$(wc -c < "$f")
     echo "  $(basename "$f") ($SIZE bytes)"
     [ "$SIZE" -lt 200 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
@@ -28,20 +32,18 @@ TS_FILE="$ARCH_DIR/tech-stack.json"
 if [ ! -f "$TS_FILE" ]; then
   echo "❌ tech-stack.json 不存在"
   ERRORS=$((ERRORS + 1))
-else
-  if python3 -c "import json; json.load(open('$TS_FILE'))" 2>/dev/null; then
-    echo "✅ tech-stack.json 格式有效"
-    # 检查关键字段
-    python3 -c "
+elif python3 -c "
 import json, sys
-d = json.load(open('$TS_FILE'))
-if 'project' not in d: sys.exit(1)
-if 'techStack' not in d: sys.exit(1)
-print('  project=$(basename ${d.get('project','?'))} )"
-  else
-    echo "❌ tech-stack.json 格式无效"
-    ERRORS=$((ERRORS + 1))
-  fi
+with open('$TS_FILE') as f:
+    d = json.load(f)
+assert 'project' in d, 'missing project'
+assert 'techStack' in d, 'missing techStack'
+print('  project=' + d.get('project', '?'))
+" 2>/dev/null; then
+  echo "✅ tech-stack.json 格式有效"
+else
+  echo "❌ tech-stack.json 格式无效"
+  ERRORS=$((ERRORS + 1))
 fi
 
 [ "$ERRORS" -eq 0 ] && echo "✅ 架构检查通过" || echo "⚠️ 架构检查完成，$ERRORS 个问题"

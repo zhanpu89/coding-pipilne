@@ -14,27 +14,29 @@
 
 ## 检索策略
 
-根据场景选择最优检索方式：
+根据场景选择最优检索方式。
+
+**说明**：`search_summaries` 内部自动按 语义检索→全文检索→关键词匹配 三级降级搜索，无需手动选择模式。
 
 ### 场景 1：精确关键词查找
 
 ```
-search_summaries(query=关键词, use_fts=True, limit=3)
+search_summaries(query=关键词, limit=3)
 ```
 
 **响应格式**：`{"success": True, "data": [...]}` 或 `{"success": False, "message": "..."}`
 
 适用于：已知确切术语、文件名、模块名。
 
-### 场景 2：语义相似度搜索（推荐默认）
+### 场景 2：语义相似度搜索（默认）
 
 ```
-search_summaries(query=自然语言描述, use_vector=True, limit=3)
+search_summaries(query=自然语言描述, limit=3)
 ```
 
 **响应格式**：`{"success": True, "data": [...]}` 或 `{"success": False, "message": "..."}`
 
-适用于：模糊概念、问题描述、经验查找。向量检索能理解语义相似性，即使措辞不同也能找到相关记录。
+适用于：模糊概念、问题描述、经验查找。系统自动使用语义检索，无需显式指定 `use_vector`。
 
 ### 场景 3：按标签/模块筛选
 
@@ -59,30 +61,12 @@ search_summaries(project_name=项目名, branch_name=分支名, status=状态, l
 ### 场景 5：获取完整详情
 
 ```
-get_summary_by_id(session_id)
+get_summary(session_id)
 ```
 
 **响应格式**：`{"success": True, "data": {...摘要对象...}}` 或 `{"success": False, "message": "..."}`
 
 适用于：从检索结果中获取某条摘要的完整内容。通常在场景 1-4 返回摘要列表后，选择最相关的一条深入查看。
-
-### 场景 6：FTS5 全文检索
-
-```
-search_summaries_fts(query, project_name, branch_name, status, limit=10)
-```
-
-**参数验证**：`query` 不能为空
-
-**响应格式**：`{"success": True, "data": [...]}` 或 `{"success": False, "message": "..."}`
-
-适用于：需要精确全文匹配的场景。
-
-## 检索优先级
-
-向量语义搜索 > FTS5 全文检索 > LIKE 模糊匹配
-
-优先使用 `use_vector=True`，因为向量检索能理解语义相似性，即使措辞不同也能匹配。FTS5 适合精确术语匹配，LIKE 仅作为最后的降级方案。
 
 ## 检索结果处理
 
