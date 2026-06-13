@@ -97,7 +97,7 @@ SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
 [ "$SKILL_COUNT" -eq 10 ] && ok "$SKILL_COUNT/10 skills" || info "skills: $SKILL_COUNT/10"
 
 RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
-[ "$RULE_COUNT" -eq 2 ] && ok "$RULE_COUNT/2 rules" || info "rules: $RULE_COUNT/2"
+[ "$RULE_COUNT" -eq 4 ] && ok "$RULE_COUNT/4 rules" || info "rules: $RULE_COUNT/4"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
 [ "$SCRIPT_COUNT" -eq 8 ] && ok "$SCRIPT_COUNT/8 scripts" || info "scripts: $SCRIPT_COUNT/8"
