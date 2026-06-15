@@ -30,4 +30,17 @@ skills/{skill}/
 
 ## 插件
 
-`.opencode/plugins/skill-agent.ts` 插件将 10 个技能暴露为自定义工具，加载方式均为"仅 SKILL.md，按需 read"。
+| 插件 | 文件 | 职责 |
+|------|------|------|
+| 技能编排 | `plugins/skill-agent.ts` | 将 10 个技能暴露为 `call_*` 自定义工具，负责 SKILL.md 懒加载和 subagent 调度 |
+| 上下文治理 | `plugins/token-saver.ts` | 头尾保留截断策略（前 30% + 后 70%）、智能错误检测免截断、`session.compacting` 优化压缩质量，节省 40-60% token |
+
+## 命令
+
+| 命令 | 文件 | 职责 |
+|------|------|------|
+| `/trim [keep_last=N]` | `commands/trim.md` | 手动压缩当前会话，按流水线阶段保留关键上下文 |
+
+## 配置
+
+调整各工具的截断阈值：编辑 `token-saver.json`。

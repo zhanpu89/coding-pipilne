@@ -170,13 +170,13 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 
 ## 项目规则（Project Rules）
 
-针对**增量需求 / Bug 修复**场景，系统内置 4 条 AI 行为约束规则。前 3 条通过 `opencode.json` 的 `instructions` 常加载，`doc-alignment.md` 由 `code-developer` 在编码阶段按需读取：
+针对**增量需求 / Bug 修复**场景，系统内置 4 条 AI 行为约束规则。前 2 条通过 `opencode.json` 的 `instructions` 常加载，`code-discipline.md` 由 `skill-agent` 插件按需注入 subagent，`doc-alignment.md` 由 `code-developer` 在编码阶段按需读取：
 
 | 规则 | 文件 | 作用 | 加载策略 |
 |------|------|------|---------|
 | 精准定位规则 | `.opencode/rules/precise-location.md` | 禁止 AI 不经定位直接扫描代码，按模块→层级→文件三步定位 | ⚡ 常加载 |
 | 端锁定规则 | `.opencode/rules/endpoint-lock.md` | 禁止 AI 擅自修改 API/数据库契约，发现不对齐时 STOP→READ→REPORT→WAIT | ⚡ 常加载 |
-| 编码纪律 | `.opencode/rules/code-discipline.md` | 先思考再编码/简洁优先/手术式修改/目标驱动执行 | ⚡ 常加载 |
+| 编码纪律 | `.opencode/rules/code-discipline.md` | 先思考再编码/简洁优先/手术式修改/目标驱动执行 | 🌀 按需（skill-agent 插件注入 subagent） |
 | 文档对齐 | `.opencode/rules/doc-alignment.md` | 代码与文档同步修改，杜绝设计与代码漂移 | 🌀 按需（编码阶段） |
 
 > 全量新建项目走 pipeline-orchestrator 流程，不触发这些规则。
@@ -190,11 +190,11 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
   "$schema": "https://opencode.ai/config.json",
   "instructions": [
     ".opencode/rules/precise-location.md",
-    ".opencode/rules/endpoint-lock.md",
-    ".opencode/rules/code-discipline.md"
+    ".opencode/rules/endpoint-lock.md"
   ],
   "plugin": [
-    "./.opencode/plugins/skill-agent.ts"
+    "./.opencode/plugins/skill-agent.ts",
+    "./.opencode/plugins/token-saver.ts"
   ],
   "agent": {
     "prd-writer":           { "mode": "subagent", ... },
@@ -211,8 +211,8 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 }
 ```
 
-- **instructions**: 加载 AI 行为约束规则文件（显式路径列表，`code-discipline.md` 含通用纪律提示）
-- **plugin**: 注册自定义工具插件
+- **instructions**: 加载 AI 行为约束规则文件（显式路径列表，`code-discipline.md` 由插件按需注入 subagent，避免常加载重复）
+- **plugin**: 注册自定义工具插件（`skill-agent.ts` 暴露 10 个 `call_*` 工具，`token-saver.ts` 自动截断大输出节省 token）
 - **agent**: 9 个 `mode: "subagent"` 供 `task` 启动，1 个 `mode: "primary"`（编排器）
 
 ### 目录结构
@@ -246,7 +246,11 @@ your-project/
     │   ├── ai-memory/
     │   └── pipeline-orchestrator/
     ├── plugins/
-    │   └── skill-agent.ts           # 插件：暴露 10 个 call_* 工具
+    │   ├── skill-agent.ts           # 插件：暴露 10 个 call_* 工具
+    │   └── token-saver.ts           # 插件：自动截断大工具输出（头尾保留策略）
+    ├── commands/
+    │   └── trim.md                  # 命令：/trim 手动压缩会话
+    ├── token-saver.json             # token-saver 配置（截断阈值/例外名单）
     ├── rules/                       # AI 行为约束规则（增量/Bug修复场景）
     │   ├── precise-location.md      # 精准定位规则，禁止不经定位扫描代码（常加载）
     │   ├── endpoint-lock.md         # 端锁定规则，禁止擅自修改契约接口（常加载）
