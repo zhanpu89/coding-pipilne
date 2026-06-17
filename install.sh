@@ -56,10 +56,6 @@ cp "$OPTSRC/.gitignore" "$OPTDST/" 2>/dev/null || true
 # .opencode/README.md
 cp "$OPTSRC/README.md" "$OPTDST/" 2>/dev/null || true
 
-# token-saver.json
-cp "$OPTSRC/token-saver.json" "$OPTDST/" 2>/dev/null || true
-ok "token-saver.json"
-
 # commands/
 cp -r "$OPTSRC/commands" "$OPTDST/" 2>/dev/null || info "commands/ 不存在，跳过"
 
@@ -99,7 +95,7 @@ ERRORS=0
 [ -d "$TARGET/.opencode/skills" ] && ok ".opencode/skills/" || { fail ".opencode/skills/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }
-[ -f "$TARGET/.opencode/token-saver.json" ] && ok "token-saver.json" || info "token-saver.json 不存在（可选）"
+
 [ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/" || info ".opencode/commands/ 不存在（可选）"
 
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)

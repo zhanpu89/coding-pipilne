@@ -193,8 +193,7 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
     ".opencode/rules/endpoint-lock.md"
   ],
   "plugin": [
-    "./.opencode/plugins/skill-agent.ts",
-    "./.opencode/plugins/token-saver.ts"
+    "./.opencode/plugins/skill-agent.ts"
   ],
   "agent": {
     "prd-writer":           { "mode": "subagent", ... },
@@ -212,7 +211,7 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 ```
 
 - **instructions**: 加载 AI 行为约束规则文件（显式路径列表，`code-discipline.md` 由插件按需注入 subagent，避免常加载重复）
-- **plugin**: 注册自定义工具插件（`skill-agent.ts` 暴露 10 个 `call_*` 工具，`token-saver.ts` 自动截断大输出节省 token）
+- **plugin**: 注册自定义工具插件（`skill-agent.ts` 暴露 10 个 `call_*` 工具）
 - **agent**: 9 个 `mode: "subagent"` 供 `task` 启动，1 个 `mode: "primary"`（编排器）
 
 ### 目录结构
@@ -247,10 +246,8 @@ your-project/
     │   └── pipeline-orchestrator/
     ├── plugins/
     │   ├── skill-agent.ts           # 插件：暴露 10 个 call_* 工具
-    │   └── token-saver.ts           # 插件：自动截断大工具输出（头尾保留策略）
     ├── commands/
     │   └── trim.md                  # 命令：/trim 手动压缩会话
-    ├── token-saver.json             # token-saver 配置（截断阈值/例外名单）
     ├── rules/                       # AI 行为约束规则（增量/Bug修复场景）
     │   ├── precise-location.md      # 精准定位规则，禁止不经定位扫描代码（常加载）
     │   ├── endpoint-lock.md         # 端锁定规则，禁止擅自修改契约接口（常加载）
