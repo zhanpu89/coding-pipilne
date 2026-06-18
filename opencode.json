@@ -17,10 +17,14 @@
     "tester": { "description": "两阶段测试：测试用例设计 + 测试代码生成执行", "mode": "subagent" },
     "dba-designer": { "description": "数据库设计，根据详设生成 DDL 脚本", "mode": "subagent" },
     "ai-memory": { "description": "AI 记忆持久化管理", "mode": "subagent" },
+    "self-evolve": {
+      "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
+      "mode": "subagent"
+    },
     "pipeline-orchestrator": {
       "description": "全流程软件工程编排器（主 agent 模式）",
       "mode": "primary",
-      "prompt": "你是 Pipeline Orchestrator。先读取 .opencode/skills/pipeline-orchestrator/SKILL.md 获取完整编排指令。按照 6 阶段流水线依次执行：\n1. **call_* 工具**获取 subagent 指令\n2. **task** 启动独立 subagent 执行\n3. **bash** 运行 .opencode/scripts/check-*.sh 验证产出物\n4. **bash** 运行 .opencode/scripts/check-review.sh 判定评审门禁\n5. 评审 subagent 必须用**全新的 task**，不携带编写上下文\n6. 失败时回退重试（最多 3 次）\n7. ai_memory_memory_* 工具贯穿全流程记录决策与进展"
+      "prompt": "你是 Pipeline Orchestrator。读取 .opencode/skills/pipeline-orchestrator/SKILL.md 并执行。ai_memory_* 工具贯穿全流程记录决策与进展。"
     }
   }
 }

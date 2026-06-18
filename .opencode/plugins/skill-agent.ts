@@ -1,6 +1,7 @@
 import { tool, type ToolDefinition } from "@opencode-ai/plugin"
-import { readFile } from "node:fs/promises"
+import { readFile, appendFile } from "node:fs/promises"
 import { join } from "node:path"
+import { existsSync, mkdirSync } from "node:fs"
 
 interface SkillDef {
   id: string
@@ -23,20 +24,17 @@ const SKILLS: SkillDef[] = [
   { id: "ai-memory", description: "AI 记忆持久化管理。读取 SKILL.md 后启动 subagent。" },
   { id: "code-developer", description: "详设 → 代码实现。读取 SKILL.md 后启动 subagent。" },
   { id: "pipeline-orchestrator", description: "全流程编排器。读取 SKILL.md 后启动 subagent。" },
+  { id: "self-evolve", description: "半自动工具自我进化。读取 SKILL.md 后启动 subagent。" },
 ]
 
 const SKILL_FILE_DIR = ".opencode/skills"
 const MIN_TASK_LENGTH = 10
-
-// ---- Cache ----
 
 const skillMdCache = new Map<string, string>()
 
 function clearCaches(): void {
   skillMdCache.clear()
 }
-
-// ---- Helpers ----
 
 function toolId(id: string): string {
   return `call_${id.replace(/-/g, "_")}`
@@ -45,8 +43,6 @@ function toolId(id: string): string {
 function cacheKey(projectDir: string, skillId: string): string {
   return `${projectDir}:${skillId}`
 }
-
-// ---- File loading ----
 
 async function readSkillMd(projectDir: string, skillId: string): Promise<string | null> {
   const key = cacheKey(projectDir, skillId)
@@ -61,8 +57,6 @@ async function readSkillMd(projectDir: string, skillId: string): Promise<string 
     return null
   }
 }
-
-// ---- Front-matter parsing ----
 
 function parseFrontmatter(skillMd: string): SkillFrontmatter | null {
   const match = skillMd.match(/^---\n([\s\S]*?)\n---/)
@@ -80,8 +74,6 @@ function parseFrontmatter(skillMd: string): SkillFrontmatter | null {
   return { name, description }
 }
 
-// ---- Validation ----
-
 function validateTask(skillId: string, task: string): string | null {
   const trimmed = task?.trim() ?? ""
   if (!trimmed) {
@@ -91,6 +83,15 @@ function validateTask(skillId: string, task: string): string | null {
     return `⚠️ 参数 \`task\` 过短（${trimmed.length} 字符），请提供更详细的任务描述。`
   }
   return null
+}
+
+// ---- Logging (for self-evolve) ----
+
+async function writeLog(projectDir: string, sid: string, ok: boolean, task: string): Promise<void> {
+  const historyDir = join(projectDir, ".opencode", ".history")
+  if (!existsSync(historyDir)) mkdirSync(historyDir, { recursive: true })
+  const line = JSON.stringify({ skill: sid, task: task.slice(0, 200), ok, ts: Date.now() }) + "\n"
+  await appendFile(join(historyDir, `${sid}.jsonl`), line, "utf-8")
 }
 
 // ---- Plugin ----
@@ -110,15 +111,18 @@ export default async function plugin() {
       },
       async execute(args, context) {
         const projectDir = context.directory || process.cwd()
+        const task = (args.task ?? "").trim()
 
-        const validationError = validateTask(skill.id, args.task)
+        const validationError = validateTask(skill.id, task)
         if (validationError) {
+          await writeLog(projectDir, skill.id, false, task)
           return { output: validationError, metadata: { skill: skill.id, error: true } }
         }
 
         const skillMd = await readSkillMd(projectDir, skill.id)
 
         if (!skillMd) {
+          await writeLog(projectDir, skill.id, false, task)
           return {
             output: `错误：未找到 ${skill.id} 的 SKILL.md 文件（路径 ${SKILL_FILE_DIR}/${skill.id}/SKILL.md）。请确认技能目录是否存在。`,
             metadata: { skill: skill.id, error: true },
@@ -127,10 +131,9 @@ export default async function plugin() {
 
         const frontmatter = parseFrontmatter(skillMd)
 
+        await writeLog(projectDir, skill.id, true, task)
         return {
-          output: `[SKILL: ${skill.id}] 任务：${args.task.trim()}
-路径：${SKILL_FILE_DIR}/${skill.id}/SKILL.md
-→ 启动 task(subagent_type='${skill.id}')，subagent 先 read 自身 SKILL.md 获取工作流指令，再按需加载 resources/ 和 templates/。`,
+          output: `[SKILL: ${skill.id}] 就绪`,
           metadata: {
             skill: skill.id,
             name: frontmatter?.name ?? skill.id,
