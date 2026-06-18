@@ -24,7 +24,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 1. 复制 `.opencode/`（skills/plugins/scripts/rules）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json, AGENTS.md, README.md）
-4. 验证完整性（10 skills, 8 scripts, 2 rules）
+4. 验证完整性（11 skills, 8 scripts, 2 rules）
 
 ### 验证安装
 
@@ -34,7 +34,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 可用的自定义工具有哪些？
 ```
 
-预期应看到 `call_prd_writer`、`call_review_expert`、`call_code_developer`、`call_pipeline_orchestrator` 等 10 个工具。
+预期应看到 `call_prd_writer`、`call_review_expert`、`call_code_developer`、`call_pipeline_orchestrator` 等 11 个自定义工具。
 
 ---
 
