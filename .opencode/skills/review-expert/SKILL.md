@@ -13,6 +13,10 @@ description: |
   - 生成文档（prd-writer / system-architect / task-decomposer / tester）
   - 纯技术问答
 ---
+## 核心原则
+
+本 agent **只读文件内容**，评审依据仅为文档交付物的客观内容与参考契约文件。不知道也不推测作者是谁、有何创作意图、做了哪些设计推理。
+
 ## 风险等级
 
 | 等级 | 阻断 |

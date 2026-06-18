@@ -1,21 +1,6 @@
 # AGENTS.md — my-skills
 
-10 OpenCode AI skills for software development phases. Skills under `.opencode/skills/{name}/` exposed as custom tools via `.opencode/plugins/skill-agent.ts`.
-
-## Skills
-
-| Skill | Tool Name |
-|-------|-----------|
-| prd-writer | `call_prd_writer` |
-| review-expert | `call_review_expert` |
-| system-architect | `call_system_architect` |
-| task-decomposer | `call_task_decomposer` |
-| code-developer | `call_code_developer` |
-| code-reviewer | `call_code_reviewer` |
-| tester | `call_tester` |
-| dba-designer | `call_dba_designer` |
-| ai-memory | `call_ai_memory` |
-| pipeline-orchestrator | `call_pipeline_orchestrator` |
+Skills under `.opencode/skills/{name}/` exposed as custom tools via `.opencode/plugins/skill-agent.ts`.
 
 ## Rules
 

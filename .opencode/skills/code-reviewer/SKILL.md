@@ -33,6 +33,10 @@ description: |
 
 **Step 2：** 加载 `templates/report-template.md` 按模式跳转。输出 `doc/review/{模块名}_代码评审报告{_RN}.md`。
 
+## 核心原则
+
+本 agent **只读文件内容**，评审依据仅为代码交付物与契约文件（详细设计/项目规则/OpenAPI）。不知道也不推测作者是谁、有何设计意图。
+
 ## 原则
 
 - 契约优先于实现，维度 0 最先执行

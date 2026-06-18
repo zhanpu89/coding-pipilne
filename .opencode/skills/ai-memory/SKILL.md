@@ -5,12 +5,16 @@ description: >
   翻历史、查记录、记决策、归档阶段成果。
   适用：持续性工程工作。不适用：纯技术问答、一次性代码、无上下文单轮请求。
 ---
+## 定位
+
+本 agent 不是归档系统，是 pipeline 的**经验引擎**。每个 Phase 启动前编排器会调用 search 检索历史经验注入 subagent，避免重复踩坑。
+
 ## 工具速查
 
 | 时机 | 调用 |
 |------|------|
 | 开始/接续 | `ai_memory_init_session(project_name, branch_name)` → 有进行中任务则继续 |
-| 似曾相识 | `ai_memory_search_summaries(query=关键词)` |
+| Phase 启动前（编排器调用） | `ai_memory_search_summaries(query={模块/阶段关键词})` → 注入 subagent prompt |
 | 记重要决定 | `ai_memory_add_decision(session_id, type, description, reasoning)` |
 | 状态变了 | `ai_memory_update_summary(session_id, new_status, updated_content)` |
 | 阶段完成 | 用户确认后 `ai_memory_save_summary(...)` — 填 file_paths/next_steps/tags |

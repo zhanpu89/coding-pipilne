@@ -11,13 +11,20 @@ description: |
   - 代码评审（code-reviewer）
   - 纯技术问答
 ---
-## Step 0
+## Step 0（定位）
 
-确认 `doc/detailed/`、`doc/arch/tech-stack.json`、`doc/detailed/项目规则.md`、`doc/detailed/编码规范.md` 都存在。缺少任一则停止。确定实现顺序（从依赖底层开始）。
+按 `.opencode/rules/precise-location.md` 定位变更范围。先读对应详设文档确认预期行为，禁止不经定位直接全局扫描。
+
+**实现模式：** 确认 `doc/detailed/`、`doc/arch/tech-stack.json`、`doc/detailed/项目规则.md`、`doc/detailed/编码规范.md` 都存在。缺少任一则停止。
+**修复模式：** 直接找目标模块的详设和代码，不需要全量文档检查。
 
 ## Step 1
 
-对每个详设文档，生成实体/DAO/Service/API/DTO + 单元测试骨架。每模块完成后按 `.opencode/rules/doc-alignment.md` 同步更新文档。
+对每个详设文档，生成实体/DAO/Service/API/DTO + 单元测试骨架。
+
+> ⛔ **禁止修改 `doc/detailed/`、`doc/arch/`、`doc/db/` 下的任何契约文档。** 编码依据详设实现，详设未覆盖的接口或字段不要自行发明。如果详设不完整导致无法实现，停止该模块并在输出中列出偏差清单（缺什么字段/接口/规则），由编排层处理。
+> 
+> 如果代码修改导致契约文档需同步更新（如接口签名变更、字段增减、业务规则调整），**不要改文档，改为输出文档同步清单**：`>>DOC_SYNC: {文件路径} → {改动说明}`，每处一行。编排层会统一更新。
 
 ### 写入检查
 
