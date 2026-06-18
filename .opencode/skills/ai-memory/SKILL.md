@@ -26,3 +26,7 @@ description: >
 - Session ID 格式：`session-{YYYYMMDD}-{task_slug}`，同一任务复用
 - 状态值只用：`in_progress` / `completed` / `pending` / `blocked` / `abandoned`
 - 所有工具返回 `{"success": bool, ...}`，先查 `success`
+
+### JSON 写入安全
+
+出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。

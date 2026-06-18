@@ -36,3 +36,7 @@ description: |
 ### 熔断
 
 语言未确认不生成 / PRD 缺核心 NFR 则返回澄清 / 写入失败则停止 / 结束前 `tech-stack.json` 未生成则补充
+
+### JSON 写入安全
+
+出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。

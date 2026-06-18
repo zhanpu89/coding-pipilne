@@ -45,3 +45,7 @@ description: |
 ### 熔断
 
 `_PROGRESS.md` 未创建 / `doc/detailed/` 无详设 / 数据库类型未知 / 写入失败 / 连续多张未等确认 / 含 FOREIGN KEY 或占位符 → 停止
+
+### JSON 写入安全
+
+出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。
