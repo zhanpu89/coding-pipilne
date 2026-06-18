@@ -21,8 +21,8 @@ const SKILLS: SkillDef[] = [
   { id: "code-reviewer", description: "代码质量门禁评审。读取 SKILL.md 后启动 subagent。" },
   { id: "tester", description: "两阶段测试。读取 SKILL.md 后启动 subagent。" },
   { id: "dba-designer", description: "详设 → DDL 脚本。读取 SKILL.md 后启动 subagent。" },
-  { id: "ai-memory", description: "AI 记忆持久化管理。读取 SKILL.md 后启动 subagent。" },
-  { id: "code-developer", description: "详设 → 代码实现。读取 SKILL.md 后启动 subagent。" },
+  { id: "ai-memory", description: "经验引擎：跨会话记忆 + pipeline 经验注入。读取 SKILL.md 后启动 subagent。" },
+  { id: "code-developer", description: "编码实现（精准定位 + doc-sync）。读取 SKILL.md 后启动 subagent。" },
   { id: "pipeline-orchestrator", description: "全流程编排器。读取 SKILL.md 后启动 subagent。" },
   { id: "self-evolve", description: "半自动工具自我进化。读取 SKILL.md 后启动 subagent。" },
 ]
