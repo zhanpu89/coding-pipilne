@@ -1,19 +1,19 @@
-# AGENTS.md — my-skills
+# AGENTS.md
 
-Skills under `.opencode/skills/{name}/` exposed as custom tools via `.opencode/plugins/skill-agent.ts`.
+Skills: `.opencode/skills/{name}/SKILL.md` exposed as `call_*` via `plugins/skill-agent.ts`.
 
 ## Rules
 
-| File | Strategy |
-|------|----------|
-| `precise-location.md` | ⚡ always loaded |
-| `endpoint-lock.md` | ⚡ always loaded |
-| `code-discipline.md` | 🌀 on-demand (skill-agent plugin injects into subagent) |
-| `doc-alignment.md` | 🌀 on-demand (pipeline-orchestrator doc-sync) |
+| File | Load |
+|------|------|
+| `precise-location.md` | ⚡ always |
+| `endpoint-lock.md` | ⚡ always |
+| `code-discipline.md` | 🌀 on-demand |
+| `doc-alignment.md` | 🌀 on-demand |
 
 ## Conventions
 
-- **LC-001**: Backend language (Java/Python/Go/Node.js)
-- **LC-FE-001**: Frontend (Vue3/React/none)
-- **Status**: 🟡 草稿 → 🟢 已确认
-- **Memory**: init_session → search_summaries before each phase (inject history) → add_decision immediately → save_summary at milestones
+- **LC-001**: 语言 (Java/Python/Go/Node)
+- **LC-FE-001**: 前端 (Vue3/React/none)
+- **Status**: 🟡草稿 → 🟢确认
+- **Memory**: init→search(各phase前)→decision(立即)→save(里程碑)

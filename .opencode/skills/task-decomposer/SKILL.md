@@ -50,6 +50,4 @@ description: |
 
 `_PROGRESS.md` 未创建就生成 / Step 2.5 未确认可进入 Step 3 / `tech-stack.json` 不存在且 SAD 无技术栈 / 连续生成多份未等"继续" / 写入失败 → 停止
 
-### JSON 写入安全
-
-出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。
+> 📐 遵循 `.opencode/rules/json-write-safety.md`

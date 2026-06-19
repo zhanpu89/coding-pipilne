@@ -1,5 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
+  "default_agent": "pipeline-orchestrator",
   "instructions": [
     ".opencode/rules/precise-location.md",
     ".opencode/rules/endpoint-lock.md"
@@ -16,7 +17,7 @@
     "code-reviewer": { "description": "代码质量门禁，评审代码并输出结构化报告", "mode": "subagent" },
     "tester": { "description": "两阶段测试：测试用例设计 + 测试代码生成执行", "mode": "subagent" },
     "dba-designer": { "description": "数据库设计，根据详设生成 DDL 脚本", "mode": "subagent" },
-    "ai-memory": { "description": "经验引擎：跨会话记忆持久化 + pipeline 各 phase 经验注入", "mode": "subagent" },
+
     "self-evolve": {
       "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
       "mode": "subagent"

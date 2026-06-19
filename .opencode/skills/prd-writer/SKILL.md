@@ -38,6 +38,4 @@ description: |
 
 端类型未确认不生成，范围清单未满足不前进，技术术语出现即修复。
 
-### JSON 写入安全
-
-出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。
+> 📐 遵循 `.opencode/rules/json-write-safety.md`

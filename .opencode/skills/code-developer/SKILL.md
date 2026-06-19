@@ -41,7 +41,7 @@ description: |
 - 编码规范 > 框架默认 > 个人偏好
 - 200 行能写成 50 行就重写。不实现未要求的功能
 - 只改目标模块的文件，不改无关代码
-- 出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符
+- 📐 遵循 `.opencode/rules/json-write-safety.md`
 
 ## 熔断
 

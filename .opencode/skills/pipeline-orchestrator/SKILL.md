@@ -1,24 +1,14 @@
 ---
 name: pipeline-orchestrator
-description: >
-  全流程软件工程编排器。主 agent 按此指令集协调 PRD→架构→详设→DB设计→编码→测试 的完整流水线。
-  适用场景：
-  - 从零开始的全流程软件开发
-  - 从某个阶段中断后继续执行
-  - 质量门禁失败后的自动重试
-  - 已有项目增量开发（新功能/模块）
-  - Bug 修复 / 小改动（短路模式）
-  不适用场景（勿触发）：
-  - 只需要某个单一技能（直接调 `call_*`）
-  - 纯技术问答
+description: 全流程软件工程编排器。协调 PRD→架构→详设→DB→编码→测试。适用：全流程/增量/Bug修复。不适：单一技能/纯问答
 ---
 ## 模式
 
-每个 Phase 调用 `call_{skill}` + `task(subagent_type='{agent}')` → `bash .opencode/skills/pipeline-orchestrator/scripts/check-{phase}.sh`（失败 ≤3 次）→ `ai_memory_add_decision()`。
+每个 Phase 调用 `call_{skill}` + `task(subagent_type='{agent}')` → `bash .opencode/scripts/log-skill.sh {skill_id} "{任务简述}"`（记录 task() 供 self-evolve 分析）→ `bash .opencode/skills/pipeline-orchestrator/scripts/check-{phase}.sh`（失败 ≤3 次）→ `ai_memory_add_decision()`。
 
 **评审门禁（不可跳过）：** 每个文档产出阶段（PRD/架构/详设/DDL/测试用例）**必须**强制跟随对应的评审 Phase。编排器必须先执行产出阶段，再执行评审 Phase，评审通过后方可进入下一产出阶段。跳过任一评审 = 流程违规。
 
-**JSON 写入安全：** 出现 `JSON parsing failed` 时，说明工具调用 payload 格式有误。写入大文件时分多次 `write` 调用，每次不超过 2000 字符。
+> 📐 遵循 `.opencode/rules/json-write-safety.md`
 
 ### 评审隔离铁则（杜绝自审自判）
 
@@ -90,44 +80,28 @@ Phase 6a → Phase 6b(用例评审) → Phase 6c(执行)
 
 **Phase 1a（需求访谈）：** 主 agent 读 `prd-writer/resources/interview-framework.md` → `question` 工具访谈 → 输出 `doc/prd/_requirements_summary.md`
 
-**Phase 1b（PRD 撰写）：** `ai_memory_search_summaries(query=项目名+"PRD"+"需求")` → `call_prd_writer` + task(prd-writer, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-prd.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束后结束 subagent
+**Phase 5a（编码实现）：** 除通用模式外，还须：解析 `>>DOC_SYNC:` 清单→主 agent 按清单修改契约文档。有偏差清单（代码与契约不符）→转 Phase 3b 评审偏差→更新契约后重做 Phase 5a
 
-**Phase 1c（PRD 评审 — 门禁）：** `ai_memory_search_summaries(query=项目名+"评审失败"+"阻断")` → 启动**全新** task(review-expert) + prompt **"评审 doc/prd/ PRD 文档，参考 doc/arch/ 架构约束（如存在），检查需求完整性与逻辑闭环"** + 历史经验 → 输出 `doc/review/` → `bash .opencode/skills/pipeline-orchestrator/scripts/check-review.sh`（失败 ≤3 轮阻断）→ `ai_memory_add_decision()`。⛔ 未通过则退回 Phase 1b 修改。
+| Phase | 角色 | Skill/task | Check 脚本 | search_query | 评审 prompt |
+|-------|------|-----------|-----------|-------------|------------|
+| 1b 需求产出 | PRD撰写 | `prd-writer` | check-prd.sh | 项目名+PRD+需求 | — |
+| 1c PRD评审 | 门禁 | `review-expert` | check-review.sh | 评审失败+阻断 | 评审 doc/prd/，参考 doc/arch/ |
+| 2a 架构产出 | 架构设计 | `system-architect` | check-arch.sh | 架构+技术选型 | — |
+| 2b 架构评审 | 门禁 | `review-expert` | check-review.sh | 评审失败+阻断 | 评审 doc/arch/，参考 doc/prd/ |
+| 3a 详设产出 | 详细设计 | `task-decomposer` | check-detailed.sh | 详设+接口 | — |
+| 3b 详设评审 | 门禁 | `review-expert` | check-review.sh | 评审失败+阻断 | 评审 doc/detailed/，参考 doc/arch/ |
+| 4a DDL产出 | DB设计 | `dba-designer` | check-db.sh | DDL+表结构 | — |
+| 4b DDL评审 | 门禁 | `review-expert` | check-review.sh | DDL评审+表结构 | 评审 doc/db/，参考 doc/detailed/ |
+| 5a 编码产出 | 编码实现 | `code-developer` | check-code.sh | 代码评审+P0 | — |
+| 5b 代码评审 | 门禁 | `code-reviewer` | check-review.sh | 缺陷+安全 | 评审 src/，对照 doc/arch/, doc/detailed/ |
+| 6a 用例产出 | 测试用例 | `tester(阶段一)` | check-testcase.sh | 测试覆盖+遗漏 | — |
+| 6b 用例评审 | 门禁 | `review-expert` | check-review.sh | 评审失败+阻断 | 评审 doc/tester/，参考 doc/detailed/ |
+| 6c 测试执行 | 测试执行 | `tester(阶段二)` | check-test.sh | 测试失败 | — |
 
----
-
-**Phase 2a（架构设计）：** `ai_memory_search_summaries(query=项目名+"架构"+"技术选型")` → `call_system_architect` + task(system-architect, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-arch.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束后结束 subagent
-
-**Phase 2b（架构评审 — 门禁）：** `ai_memory_search_summaries(query=项目名+"评审失败"+"阻断")` → 启动**全新** task(review-expert) + prompt **"评审 doc/arch/ 架构文档，参考 doc/prd/ 需求范围，检查非功能属性、技术选型合理性与单点故障"** + 历史经验 → `bash .opencode/skills/pipeline-orchestrator/scripts/check-review.sh`（失败 ≤3 轮阻断）→ `ai_memory_add_decision()`。⛔ 未通过则退回 Phase 2a 修改。
-
----
-
-**Phase 3a（详细设计）：** `ai_memory_search_summaries(query=模块+"详设"+"接口")` → `call_task_decomposer` + task(task-decomposer, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-detailed.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束后结束 subagent
-
-**Phase 3b（详设评审 — 门禁）：** `ai_memory_search_summaries(query=模块+"评审失败"+"阻断")` → 启动**全新** task(review-expert) + prompt **"评审 doc/detailed/ 详细设计文档，参考 doc/arch/ 和 doc/prd/，检查并发安全、事务边界、接口契约完整性"** + 历史经验 → `bash .opencode/skills/pipeline-orchestrator/scripts/check-review.sh`（失败 ≤3 轮阻断）→ `ai_memory_add_decision()`。⛔ 未通过则退回 Phase 3a 修改。
-
----
-
-**Phase 4a（DDL 设计）：** `ai_memory_search_summaries(query=模块+"DDL"+"表结构")` → `call_dba_designer` + task(dba-designer, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-db.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束后结束 subagent
-
-**Phase 4b（DDL 评审 — 门禁）：** `ai_memory_search_summaries(query=模块+"DDL评审"+"表结构")` → 启动**全新** task(review-expert) + prompt **"评审 doc/db/ DDL 脚本，参考 doc/detailed/ 数据模型，检查三范式、索引策略、命名规范"** + 历史经验 → `bash .opencode/skills/pipeline-orchestrator/scripts/check-review.sh`（失败 ≤3 次）→ `ai_memory_add_decision()`。⛔ 未通过则退回 Phase 4a 修改。
-
----
-
-**Phase 5a（编码实现）：** `ai_memory_search_summaries(query=模块+"代码评审"+"P0")` → `call_code_developer` + task(code-developer, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-code.sh`（失败 ≤3 次）→ 结束后结束 subagent。解析输出中的 `>>DOC_SYNC:` 清单，**主 agent 按清单修改对应契约文档**。如有偏差清单（代码与契约不符）→ 转 Phase 3b 评审偏差，通过后更新契约文档再重做 Phase 5a
-
-**Phase 5b（代码评审）：** `ai_memory_search_summaries(query=模块+"缺陷"+"安全")` → 启动**全新** task(code-reviewer) + prompt **"评审 src/ 代码，对照 doc/arch/, doc/detailed/，检查安全漏洞、契约一致性、性能反模式"** + 历史经验
-
----
-
-**Phase 6a（测试用例设计）：** `ai_memory_search_summaries(query=模块+"测试覆盖"+"遗漏")` → `call_tester(阶段一)` + task(tester, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-testcase.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束 subagent
-
-**Phase 6b（测试用例评审 — 门禁）：** `ai_memory_search_summaries(query=模块+"评审失败"+"阻断")` → 启动**全新** task(review-expert) + prompt **"评审 doc/tester/ 测试用例，参考 doc/detailed/ 业务规则，检查覆盖度、边界值、需求追溯"** + 历史经验 → `bash .opencode/skills/pipeline-orchestrator/scripts/check-review.sh`（失败 ≤3 轮阻断）→ `ai_memory_add_decision()`。⛔ 未通过则退回 Phase 6a 修改（最多 3 轮）。
-
-**Phase 6c（测试执行）：** `ai_memory_search_summaries(query=模块+"测试失败")` → `call_tester(阶段二)` + task(tester, prompt 含历史经验) → `bash .opencode/skills/pipeline-orchestrator/scripts/check-test.sh`（失败 ≤3 次）→ `ai_memory_add_decision()` → 结束 subagent
+> 产出 Phase 结束后结束 subagent。搜索无结果时不阻断，直接继续。
 
 **Step 7：** `ai_memory_save_summary(...)` 归档。输出 ✅ **Pipeline 完成** + 产出物汇总。
 
 ## 熔断
 
-subagent 启动失败重试 1 次 / 同一门禁连续失败 3 次暂停 / 缺必需输入停止 / ai-memory 失败则记录后继续
+subagent 启动失败重试 1 次 / 同一门禁连续失败 3 次暂停 / 缺必需输入停止 / 记忆 (ai_memory_*) 失败则记录后继续

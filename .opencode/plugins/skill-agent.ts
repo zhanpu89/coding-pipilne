@@ -14,17 +14,17 @@ interface SkillFrontmatter {
 }
 
 const SKILLS: SkillDef[] = [
-  { id: "prd-writer", description: "需求分析 → PRD 文档。读取 SKILL.md 后启动 subagent。" },
-  { id: "review-expert", description: "文档/用例评审。读取 SKILL.md 后启动 subagent。" },
-  { id: "system-architect", description: "PRD → 架构建档。读取 SKILL.md 后启动 subagent。" },
-  { id: "task-decomposer", description: "SAD → 模块详设。读取 SKILL.md 后启动 subagent。" },
-  { id: "code-reviewer", description: "代码质量门禁评审。读取 SKILL.md 后启动 subagent。" },
-  { id: "tester", description: "两阶段测试。读取 SKILL.md 后启动 subagent。" },
-  { id: "dba-designer", description: "详设 → DDL 脚本。读取 SKILL.md 后启动 subagent。" },
-  { id: "ai-memory", description: "经验引擎：跨会话记忆 + pipeline 经验注入。读取 SKILL.md 后启动 subagent。" },
-  { id: "code-developer", description: "编码实现（精准定位 + doc-sync）。读取 SKILL.md 后启动 subagent。" },
-  { id: "pipeline-orchestrator", description: "全流程编排器。读取 SKILL.md 后启动 subagent。" },
-  { id: "self-evolve", description: "半自动工具自我进化。读取 SKILL.md 后启动 subagent。" },
+  { id: "prd-writer", description: "加载 PRD 技能并验证任务参数" },
+  { id: "review-expert", description: "加载评审技能并验证任务参数" },
+  { id: "system-architect", description: "加载架构技能并验证任务参数" },
+  { id: "task-decomposer", description: "加载详设技能并验证任务参数" },
+  { id: "code-reviewer", description: "加载代码评审技能并验证任务参数" },
+  { id: "tester", description: "加载测试技能并验证任务参数" },
+  { id: "dba-designer", description: "加载 DB 设计技能并验证任务参数" },
+
+  { id: "code-developer", description: "加载编码技能并验证任务参数" },
+  { id: "pipeline-orchestrator", description: "加载流水线编排技能并验证任务参数" },
+  { id: "self-evolve", description: "加载自我进化技能并验证任务参数" },
 ]
 
 const SKILL_FILE_DIR = ".opencode/skills"
@@ -66,11 +66,7 @@ function parseFrontmatter(skillMd: string): SkillFrontmatter | null {
   const name = body.match(/^name:\s*(.+)$/m)?.[1]?.trim()
   if (!name) return null
 
-  const descMatch = body.match(/^description:\s+[|>]\s*\n([\s\S]*?)(?=\n\S|\n---|$)/)
-  const description = descMatch
-    ? descMatch[1].split("\n").map(l => l.replace(/^  /, "").trim()).filter(Boolean).join("\n")
-    : body.match(/^description:\s*(.+)$/m)?.[1]?.trim()
-
+  const description = body.match(/^description:\s*(.+)$/m)?.[1]?.trim()
   return { name, description }
 }
 
@@ -133,7 +129,7 @@ export default async function plugin() {
 
         await writeLog(projectDir, skill.id, true, task)
         return {
-          output: `[SKILL: ${skill.id}] 就绪`,
+          output: skillMd,
           metadata: {
             skill: skill.id,
             name: frontmatter?.name ?? skill.id,

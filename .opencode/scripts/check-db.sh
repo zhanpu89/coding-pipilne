@@ -29,6 +29,26 @@ else
       echo "⚠️  没有 CREATE TABLE/INDEX 语句"
       ERRORS=$((ERRORS + 1))
     fi
+
+    # SQL 语法校验
+    if command -v sqlite3 &>/dev/null; then
+      if sqlite3 :memory: ".read '$f'" 2>/dev/null; then
+        echo "  ✅ SQL 语法通过"
+      else
+        echo "  ❌ SQL 语法错误: $f"
+        sqlite3 :memory: ".read '$f'" 2>&1 | head -5
+        ERRORS=$((ERRORS + 1))
+      fi
+    elif command -v sqlfluff &>/dev/null; then
+      if sqlfluff lint --dialect mysql "$f" 2>&1 | grep -q "PASS"; then
+        echo "  ✅ SQL 语法通过 (sqlfluff)"
+      else
+        echo "  ⚠️  sqlfluff 发现问题: $f"
+        sqlfluff lint --dialect mysql "$f" 2>&1 | tail -10
+      fi
+    else
+      echo "  ℹ️  未安装 sqlite3/sqlfluff，跳过 SQL 语法校验"
+    fi
   done
 fi
 
