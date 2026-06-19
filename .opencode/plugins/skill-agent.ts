@@ -83,11 +83,15 @@ function validateTask(skillId: string, task: string): string | null {
 
 // ---- Logging (for self-evolve) ----
 
-async function writeLog(projectDir: string, sid: string, ok: boolean, task: string): Promise<void> {
-  const historyDir = join(projectDir, ".opencode", ".history")
-  if (!existsSync(historyDir)) mkdirSync(historyDir, { recursive: true })
+function historyDir(): string {
+  return join(process.env.HOME || "/tmp", ".opencode", "history")
+}
+
+async function writeLog(_projectDir: string, sid: string, ok: boolean, task: string): Promise<void> {
+  const dir = historyDir()
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true })
   const line = JSON.stringify({ skill: sid, task: task.slice(0, 200), ok, ts: Date.now() }) + "\n"
-  await appendFile(join(historyDir, `${sid}.jsonl`), line, "utf-8")
+  await appendFile(join(dir, `${sid}.jsonl`), line, "utf-8")
 }
 
 // ---- Plugin ----

@@ -13,7 +13,7 @@ description: |
 ---
 ## 工作流
 
-**Step 1：** 读 `.opencode/.history/*.jsonl`，按 skill 分组。关注失败重复模式、task 模糊、问题集中的技能。
+**Step 1：** 读 `~/.opencode/history/*.jsonl`，按 skill 分组。关注失败重复模式、task 模糊、问题集中的技能。
 
 **Step 2：** 对照 `.opencode/skills/{skill}/SKILL.md` 分析：失败是否指向缺失前置检查、调用是否偏离声明场景、用户是否反复修正同一类输出、是否反复触发 endpoint-lock/precise-location 规则。
 

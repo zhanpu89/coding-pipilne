@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # 记录 task() subagent 调用日志（供 self-evolve 分析）
 # 用法: log-skill.sh <skill_id> <task描述> [ok|fail]
-# 写入 .opencode/.history/{skill}.jsonl
+# 写入 ~/.opencode/history/{skill}.jsonl（用户级目录，不随项目清理）
 
 SKILL="$1"
 TASK_DESC="${2:-unknown}"
 OK="${3:-ok}"
-HISTORY_DIR="$(dirname "$0")/../.history"
+HISTORY_DIR="${HOME:-/tmp}/.opencode/history"
 
 [ -z "$SKILL" ] && echo "用法: log-skill.sh <skill_id> <task描述> [ok|fail]" && exit 1
 
