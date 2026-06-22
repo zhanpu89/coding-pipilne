@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Skills: `.opencode/skills/{name}/SKILL.md` exposed as `call_*` via `plugins/skill-agent.ts`.
+Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `opencode.json`.
 
 ## Rules
 
@@ -16,4 +16,4 @@ Skills: `.opencode/skills/{name}/SKILL.md` exposed as `call_*` via `plugins/skil
 - **LC-001**: 语言 (Java/Python/Go/Node)
 - **LC-FE-001**: 前端 (Vue3/React/none)
 - **Status**: 🟡草稿 → 🟢确认
-- **Memory**: init→search(各phase前)→decision(立即)→save(里程碑)
+- **Memory**: init→search(Step 0统一)→_MEMORY_CACHE.md→decision(产出Phase后)→save(里程碑)

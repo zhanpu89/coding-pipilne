@@ -15,7 +15,7 @@ description: |
 
 按 `.opencode/rules/precise-location.md` 定位变更范围。先读对应详设文档确认预期行为，禁止不经定位直接全局扫描。
 
-**实现模式：** 确认 `doc/detailed/`、`doc/arch/tech-stack.json`、`doc/detailed/项目规则.md`、`doc/detailed/编码规范.md` 都存在。缺少任一则停止。
+**实现模式：** 确认 `doc/detailed/`、`doc/arch/tech-stack.json`、`doc/detailed/项目规则.md`、`doc/detailed/编码规范.md` 都存在。缺少任一则停止。含前端代码时额外加载 `task-decomposer/resources/frontend-guide.md`（取 CSS 变量命名表、组件分层结构、样式规范）。
 **修复模式：** 直接找目标模块的详设和代码，不需要全量文档检查。
 
 ## Step 1
@@ -26,6 +26,23 @@ description: |
 > 
 > 如果代码修改导致契约文档需同步更新（如接口签名变更、字段增减、业务规则调整），**不要改文档，改为输出文档同步清单**：`>>DOC_SYNC: {文件路径} → {改动说明}`，每处一行。编排层会统一更新。
 
+### 前端编码约束（有前端代码时强制执行）
+
+- **禁止内联样式**：误用 `style={{}}`（React）或 `:style="..."`（Vue3）必须在评审中标记为 P0 级别的阻断项。所有样式使用 CSS 类名 + CSS 变量
+- **CSS 变量优先**：颜色/间距/字号/阴影必须引用 `styles/variables.css` 中定义的 CSS 变量，禁止硬编码值
+- **组件复用规则**：相同 UI 模式出现 2 次以上，必须抽取为 `components/shared/` 下的共享组件。新增组件前先检查是否有可复用组件
+- **组件分层**：按 `shared/ → {模块}/ → views/` 三层结构组织组件目录，不得跨层引用
+
+### 前后端契约对齐自检（全栈模式必做）
+
+生成后端代码后、生成前端 API 调用代码前，执行以下校验：
+
+1. 打开后端 controller/route 文件，提取所有实际接口路径、HTTP 方法、参数列表
+2. 对比 `doc/detailed/` 中的 OpenAPI 规范，标记差异
+3. 差异处理：规范正确则修正代码，代码正确则输出 `>>DOC_SYNC:` 更新规范
+4. 生成前端 API 调用时，**直接对照后端实际 controller 代码**（而非仅对照 OpenAPI 规范）确保路径、方法、参数字段完全一致
+5. 前端响应处理代码中使用的字段名，必须与后端实际返回的字段名逐字匹配
+
 ### 写入检查
 
 - 所有 BR 有代码实现
@@ -33,6 +50,7 @@ description: |
 - 异常处理覆盖安全要求
 - 符合 LC/ER 约束
 - 无 `TODO`/`FIXME` 残留
+- **全栈模式额外检查**：前端 API 调用路径与后端路由一致、请求/响应字段名匹配
 
 ## 规则
 
