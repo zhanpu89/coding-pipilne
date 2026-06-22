@@ -270,7 +270,6 @@ your-project/
     │   ├── skill-agent.ts           # 插件：暴露 11 个 call_* 工具
     │   └── skill-loader.ts          # skill 管理工具
     ├── commands/
-    │   ├── trim.md                  # 命令：/trim 手动压缩会话
     │   └── check-doc-drift.md       # 命令：/check-doc-drift 检测文档-代码接口漂移
     ├── rules/                       # AI 行为约束规则（贯穿编码全过程）
     │   ├── precise-location.md      # 精准定位规则：编码前置（常加载）
