@@ -24,7 +24,7 @@ description: |
 
 ### Step 3：PRD 生成
 
-加载 `resources/filling-guide.md` + `resources/glossary.md` + `templates/common.md` + `templates/end-specific.md`（按端类型跳转 `##` 节）。多端先 `_概览.md`，再各端独立文档。快速模式直接跳此步。
+加载 `resources/filling-guide.md` + `templates/common.md` + `templates/end-specific.md`（按端类型跳转 `##` 节）。多端先 `_概览.md`，再各端独立文档。快速模式直接跳此步。
 
 ### 门禁
 

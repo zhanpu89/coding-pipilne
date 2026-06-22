@@ -13,7 +13,7 @@ description: |
 ---
 ## 工作流
 
-**Step 0：** 读 `doc/detailed/项目规则.md` 提取 LC/ER 约束。加载 `resources/glossary.md`。扫描 `src/` 和 `frontend/`。
+**Step 0：** 读 `doc/detailed/项目规则.md` 提取 LC/ER 约束。扫描 `src/` 和 `frontend/`。
 
 **Step 0.5：** 多轮评审时优先核查上轮问题修复。
 
