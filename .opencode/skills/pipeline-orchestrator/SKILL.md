@@ -110,7 +110,7 @@ Phase 6a → Phase 6b(用例评审) → Phase 6c(执行)
 
 > 产出 Phase 结束后结束 subagent。门禁失败 ≤3 次。每 Phase 完成后丢弃中间输出。
 
-**Step 7：** `ai_memory_save_summary(...)` 归档。输出 ✅ **Pipeline 完成** + 产出物汇总。
+**Step 7：** `ai_memory_save_summary(...)` 归档 → 删除 `_MEMORY_CACHE.md`、`_contract_check.md` 等临时文件 → 输出 ✅ **Pipeline 完成** + 产出物汇总。
 
 ## 熔断
 
