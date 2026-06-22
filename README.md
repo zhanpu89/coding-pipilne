@@ -1,6 +1,6 @@
 # coding-pipeline — OpenCode AI 软件工程全流程流水线
 
-一套基于 OpenCode 的 AI 软件工程流水线系统。包含 **11 个专用技能 agent** 和一个 **全流程编排器**，覆盖从需求分析到测试评审的完整开发生命周期。
+一套基于 OpenCode 的 AI 软件工程流水线系统。包含 **10 个专用技能 agent** 和一个 **全流程编排器**，覆盖从需求分析到测试评审的完整开发生命周期。
 
 ## 快速安装
 
@@ -116,7 +116,7 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 
 ## 技能详解
 
-### 11 个技能一览
+### 10 个技能一览
 
 | 技能 | agent 名 | 工具名 | 角色 | 产出目录 |
 |------|----------|--------|------|---------|
@@ -128,7 +128,6 @@ Phase 6d: 测试代码生成与执行              产出: src/test/ + 测试报
 | Code Developer | `code-developer` | `call_code_developer` | 编码实现（含精确到位、doc sync、前端样式约束、API 契约自检） | `src/` |
 | Code Reviewer | `code-reviewer` | `call_code_reviewer` | 代码质量评审 | `doc/review/` |
 | Tester | `tester` | `call_tester` | 两阶段：用例设计 → 代码生成 | `doc/tester/` + `src/test/` |
-| AI Memory | `ai-memory` | `call_ai_memory` | 经验引擎（贯穿全流程注智） | — |
 | Self Evolve | `self-evolve` | `call_self_evolve` | 工具自我进化 | `.opencode/.history/` |
 | Pipeline Orchestrator | `pipeline-orchestrator` | `call_pipeline_orchestrator` | 全流程编排 | `doc/pipeline/` |
 

@@ -96,16 +96,16 @@ ERRORS=0
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }
 
-[ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/" || info ".opencode/commands/ 不存在（可选）"
+[ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/ ($(find "$TARGET/.opencode/commands" -name '*.md' | wc -l) commands)" || info ".opencode/commands/ 不存在（可选）"
 
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
-[ "$SKILL_COUNT" -eq 11 ] && ok "$SKILL_COUNT/11 skills" || info "skills: $SKILL_COUNT/11"
+[ "$SKILL_COUNT" -eq 10 ] && ok "$SKILL_COUNT/10 skills" || info "skills: $SKILL_COUNT/10"
 
 RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
-[ "$RULE_COUNT" -eq 4 ] && ok "$RULE_COUNT/4 rules" || info "rules: $RULE_COUNT/4"
+[ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 8 ] && ok "$SCRIPT_COUNT/8 scripts" || info "scripts: $SCRIPT_COUNT/8"
+[ "$SCRIPT_COUNT" -eq 9 ] && ok "$SCRIPT_COUNT/9 scripts" || info "scripts: $SCRIPT_COUNT/9"
 
 if [ "$ERRORS" -gt 0 ]; then
   fail "安装完成，但存在 $ERRORS 个问题，请检查"
@@ -121,5 +121,5 @@ echo -e "${GREEN}═════════════════════
 echo ""
 echo "  快速验证 — 在 OpenCode 中输入:"
 echo '    可用的自定义工具有哪些？'
-echo "  预期看到 call_prd_writer, call_review_expert, call_pipeline_orchestrator 等 11 个自定义工具"
+echo "  预期看到 call_prd_writer, call_review_expert, call_pipeline_orchestrator 等 10 个自定义工具"
 echo ""
