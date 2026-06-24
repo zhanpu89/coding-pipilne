@@ -35,9 +35,11 @@
 │   ├── SKILL.md          # 技能指令（YAML + 工作流）
 │   ├── resources/        # 参考文档
 │   └── templates/        # 输出模板
-└── scripts/              # 质量门禁 + 辅助脚本
-    ├── check-*.sh        # 8 个阶段检查（PRD/架构/详设/DB/代码/评审/用例/测试）
-    └── log-skill.sh      # task() 调用日志（供 self-evolve 分析）
+├── scripts/              # 质量门禁 + 辅助脚本
+│   ├── check-*.sh        # 8 个阶段检查（PRD/架构/详设/DB/代码/评审/用例/测试）
+│   └── log-skill.sh      # task() 调用日志（供 self-evolve 分析）
+└── commands/
+    └── check-doc-drift.md      # `/check-doc-drift` — 文档-代码接口漂移检测
 ```
 
 ## 关键设计
