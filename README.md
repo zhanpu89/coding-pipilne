@@ -91,7 +91,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 安装脚本会自动完成：
 1. 复制 `.opencode/`（skills/plugins/scripts/rules）
 2. 创建 `package.json` + `npm install`
-3. 复制根目录配置文件（opencode.json, AGENTS.md, README.md）
+3. 复制根目录配置文件（opencode.json）
 4. 验证完整性（11 skills, 8 scripts, 4 rules）
 
 ### 验证安装
