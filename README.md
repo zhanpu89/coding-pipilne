@@ -89,10 +89,10 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 ```
 
 安装脚本会自动完成：
-1. 复制 `.opencode/`（skills/plugins/scripts/rules）
+1. 复制 `.opencode/`（skills/plugins/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
-4. 验证完整性（11 skills, 8 scripts, 4 rules）
+4. 验证完整性（10 skills, 9 scripts, 5 rules）
 
 ### 验证安装
 
@@ -102,7 +102,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 可用的自定义工具有哪些？
 ```
 
-预期应看到 `call_pipeline_orchestrator`、`call_prd_writer`、`call_review_expert` 等 11 个自定义工具。
+预期应看到 `call_pipeline_orchestrator`、`call_prd_writer`、`call_review_expert` 等 10 个自定义工具。
 
 ---
 
@@ -229,7 +229,7 @@ your-project/
 │   └── review/         # 评审报告
 ├── src/                # 源码产出
 └── .opencode/
-    ├── skills/         # 11 个技能定义
+    ├── skills/         # 10 个技能定义
     │   ├── prd-writer/
     │   ├── review-expert/
     │   ├── system-architect/
@@ -238,13 +238,12 @@ your-project/
     │   ├── code-reviewer/
     │   ├── tester/
     │   ├── dba-designer/
-    │   ├── ai-memory/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
     ├── plugins/        # skill-agent.ts
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
     ├── rules/          # AI 行为约束
-    └── scripts/        # 8 个验证脚本
+    └── scripts/        # 9 个验证脚本
 ```
 
 ---
