@@ -56,8 +56,6 @@ cp "$OPTSRC/.gitignore" "$OPTDST/" 2>/dev/null || true
 # .opencode/README.md
 cp "$OPTSRC/README.md" "$OPTDST/" 2>/dev/null || true
 
-# commands/
-cp -r "$OPTSRC/commands" "$OPTDST/" 2>/dev/null || info "commands/ 不存在，跳过"
 
 # ── 2. 创建 / 更新 package.json ──
 PKG="$OPTDST/package.json"
@@ -96,7 +94,6 @@ ERRORS=0
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }
 
-[ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/ ($(find "$TARGET/.opencode/commands" -name '*.md' | wc -l) commands)" || info ".opencode/commands/ 不存在（可选）"
 
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
 [ "$SKILL_COUNT" -eq 10 ] && ok "$SKILL_COUNT/10 skills" || info "skills: $SKILL_COUNT/10"

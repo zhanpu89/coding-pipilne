@@ -241,8 +241,7 @@ your-project/
     │   ├── ai-memory/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
-    ├── plugins/        # skill-agent.ts + skill-loader.ts
-    ├── commands/       # /check-doc-drift 等
+    ├── plugins/        # skill-agent.ts
     ├── rules/          # AI 行为约束
     └── scripts/        # 8 个验证脚本
 ```
