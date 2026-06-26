@@ -2,13 +2,14 @@
 
 ## 搜索方式选择
 
-| 目标 | 参数 | 原因 |
-|------|------|------|
-| 精确函数名/报错信息 | `use_fts=true` | 精确匹配 |
-| 模块内历史 | `module=模块名` | 最强过滤 |
-| 标签明确的已知问题 | `tags=标签名` | 人工分类 |
-| 模糊描述/跨模块 | `use_vector=true` | 语义匹配 |
-| 以上都不确定 | 先用 FTS5，不足时再用向量 | 精确优先 |
+内部自动按 语义检索 → 全文检索 → 关键词匹配 三级降级搜索，无需手动选择搜索模式。你只需选对查询方向：
+
+| 目标 | 参数策略 | 说明 |
+|------|---------|------|
+| 精确函数名/类名/报错信息 | `query=精确词` | 自然优先命中全文检索 |
+| 同模块历史经验 | `module=模块名` + `query=模块名` | 模块名是最强过滤条件 |
+| 标签明确的已知问题 | `tags=标签名` + `query=关键词` | 标签是人工标注的精确分类 |
+| 模糊描述/跨模块 | `query=核心问题(20字以内)` | 语义检索自动兜底，不需要关键词重叠 |
 
 ## 搜索执行（多角度探索）
 
@@ -16,21 +17,20 @@
 
 ```
 角度 A — 模块名
-  search_summaries(query=任务涉及的模块名, module=模块名, limit=3)
+  ai_memory_memory_search_summaries(query=任务涉及的模块名, module=模块名, limit=3)
   如不确定模块名则跳过此角度。
 
 角度 B — 技术关键词
-  search_summaries(query=1~2 个具体技术词, use_fts=true, limit=3)
+  ai_memory_memory_search_summaries(query=1~2 个具体技术词, limit=3)
   提取原则：优先取函数名/类名/框架名/库名/报错信息。
   不要提取通用词如"修复""新增""问题"。
 
 角度 C — 自然语言描述
-  search_summaries(query=任务核心问题(20 字以内), use_vector=true, limit=3)
-  use_vector=true 是语义检索，不需要关键词重叠。
-  把任务的核心矛盾说出来即可。
+  ai_memory_memory_search_summaries(query=任务核心问题(20字以内), limit=3)
+  把任务的核心矛盾说出来即可，语义检索会自动匹配。
 
 补充兜底（以上相关结果合计 < 3 条时）：
-  list_recent_sessions(limit=5)
+  ai_memory_memory_list_recent(limit=5)
 ```
 
 ## 相关性判断

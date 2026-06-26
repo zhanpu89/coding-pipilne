@@ -12,9 +12,6 @@
     "types": ["node"],
     "outDir": "./dist"
   },
-  "include": [
-    "plugins/**/*.ts"
-  ],
   "exclude": [
     "node_modules",
     "dist"

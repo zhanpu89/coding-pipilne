@@ -5,9 +5,6 @@
     ".opencode/rules/precise-location.md",
     ".opencode/rules/endpoint-lock.md"
   ],
-  "plugin": [
-    "./.opencode/plugins/skill-agent.ts"
-  ],
   "agent": {
     "prd-writer": {
       "description": "需求分析与 PRD 文档撰写",

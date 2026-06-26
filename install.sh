@@ -35,13 +35,6 @@ echo "  ├─ 复制 skills/..."
 cp -r "$OPTSRC/skills" "$OPTDST/"
 ok "skills/ ($(find "$OPTDST/skills" -name SKILL.md | wc -l) skills)"
 
-echo "  ├─ 复制 plugins/..."
-cp -r "$OPTSRC/plugins" "$OPTDST/"
-ok "plugins/ ($(find "$OPTDST/plugins" -name '*.ts' | wc -l) plugins)"
-
-echo "  ├─ 复制 tsconfig.json..."
-cp "$OPTSRC/tsconfig.json" "$OPTDST/" 2>/dev/null || info "tsconfig.json 不存在，跳过"
-
 echo "  ├─ 复制 scripts/..."
 cp -r "$OPTSRC/scripts" "$OPTDST/"
 ok "scripts/ ($(find "$OPTDST/scripts" -name '*.sh' | wc -l) scripts)"
@@ -67,7 +60,7 @@ elif [ -f "$OPTSRC/package.json" ]; then
   cp "$OPTSRC/package.json" "$PKG"
   ok "package.json 已创建（从源码同步）"
 else
-  echo '{"dependencies":{"@opencode-ai/plugin":"1.17.4"}}' > "$PKG"
+  echo '{"devDependencies":{"@types/node":"^25.9.3","typescript":"^5.8.0"}}' > "$PKG"
   ok "package.json 已创建（默认版本）"
 fi
 
@@ -91,7 +84,6 @@ echo -e "${CYAN}── 验证 ──${NC}"
 ERRORS=0
 
 [ -f "$TARGET/opencode.json" ] && ok "opencode.json" || { fail "opencode.json 缺失"; ERRORS=$((ERRORS+1)); }
-[ -d "$TARGET/.opencode/plugins" ] && ok ".opencode/plugins/" || { fail ".opencode/plugins/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/skills" ] && ok ".opencode/skills/" || { fail ".opencode/skills/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }

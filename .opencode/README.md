@@ -21,10 +21,7 @@
 
 ```
 .opencode/
-├── AGENTS.md            # 规则加载声明（⚡ always / 🌀 on-demand）
-├── opencode.json        # 插件 + agent 注册
-├── plugins/
-│   └── skill-agent.ts   # 将 10 个技能暴露为 call_* 自定义工具
+├── opencode.json        # agent 注册
 ├── rules/               # 始终/按需加载的行为规则
 │   ├── precise-location.md     # ⚡ 精准定位
 │   ├── endpoint-lock.md        # ⚡ 端锁定（契约稳定分级）

@@ -1,10 +1,10 @@
 # 决策存取质量规则（按需加载）
 
-ai_memory 是 stateless 模式的唯一长效记忆层。**存入质量决定取出价值。**
+ai_memory 是 stateless 模式的唯一长效记忆层（工具前缀 `ai_memory_memory_*`）。**存入质量决定取出价值。**
 
 ## 写决策模板
 
-每条 `ai_memory_add_decision()` 必须按以下模板填写：
+每条 `ai_memory_memory_add_decision()` 必须按以下模板填写：
 
 | 字段 | 规则 | 反例 | 正例 |
 |------|------|------|------|

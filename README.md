@@ -1,6 +1,6 @@
 # coding-pipeline — OpenCode AI 软件工程流水线
 
-一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **10 个专用技能 agent** 和一个 **四级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
+一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **10 个专用 skill** 和一个 **五级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
 
 > 🏆 **里程碑版本** — 经两轮实地项目验证，编排器已完成从"固定流程"到"症状驱动、跨层探测、运行时验证"的进化，能自动适配从单行 Bug 修复到全栈新项目开发的任意场景。
 
@@ -8,13 +8,14 @@
 
 ## 核心能力
 
-### 四级强度自适配
+### 五级强度自适配
 
 编排器根据任务影响域自动匹配强度，无需用户选择：
 
 | 强度 | 触发条件 | 执行流程 | 典型场景 |
 |------|---------|---------|---------|
 | 🐛 **轻量** | 单文件/单层改动，无接口无数据变更 | P5a(静态定位) → P5a-r(运行时探测) → P5b(快速审) | 改文案 / 修样式 / 按钮交互修复 |
+| 🟢-light **轻标准** | 同模块前后端改动，无DDL，无新增API | P5a → P5b → P6c(含增量测试) | 加字段 / 改UI展示已存数据 / 改返回字段 |
 | 🟢 **标准** | 同模块前后端改动，无 DDL | P3a(简设) → P3b → P5a → P5b → P6c | 加列表筛选 / 改业务逻辑不涉及 DB |
 | 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P4a → P4b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段 |
 | 🔴 **全量** | 全新项目 / 跨模块重构 | Phase 1→2→3→4→5→6 全流程 | 从零开始的完整项目 |
@@ -89,7 +90,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 ```
 
 安装脚本会自动完成：
-1. 复制 `.opencode/`（skills/plugins/scripts/rules/commands 等）
+1. 复制 `.opencode/`（skills/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
 4. 验证完整性（10 skills, 9 scripts, 5 rules）
@@ -102,7 +103,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 可用的自定义工具有哪些？
 ```
 
-预期应看到 `call_pipeline_orchestrator`、`call_prd_writer`、`call_review_expert` 等 10 个自定义工具。
+预期应看到 `pipeline-orchestrator`、`code-developer` 等 10 个 subagent。
 
 ---
 
@@ -116,10 +117,10 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 /agent pipeline-orchestrator
 ```
 
-或直接调用工具：
+或通过 `task(subagent_type='pipeline-orchestrator')` 启动：
 
 ```
-请用 call_pipeline_orchestrator 启动，任务是为这个电商项目写一个完整的软件工程流水线
+task(subagent_type='pipeline-orchestrator', description="为这个电商项目写一个完整的软件工程流水线")
 ```
 
 全流程各阶段产出：
@@ -135,17 +136,19 @@ Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/test
 
 ### 方式二：单独调用某个技能
 
+通过 `task(subagent_type='{skill_id}', description=...)` 直接执行单个技能：
+
 | 场景 | 操作 |
 |------|------|
-| 写 PRD | `call_prd_writer(task="为一个在线教育平台编写 PRD")` |
-| 评审文档 | `call_review_expert(task="评审 doc/prd/ 下的 PRD")` |
-| 架构设计 | `call_system_architect(task="基于 PRD 设计系统架构")` |
-| 详设拆分 | `call_task_decomposer(task="基于 SAD 生成详设")` |
-| 编码实现 | `call_code_developer(task="基于详设实现代码")` |
-| 代码评审 | `call_code_reviewer(task="评审 src/ 下的代码")` |
-| 测试设计 | `call_tester(task="阶段一：基于详设生成测试用例")` |
-| 测试执行 | `call_tester(task="阶段二：基于已确认用例生成测试代码并执行")` |
-| DDL 设计 | `call_dba_designer(task="基于详设生成 DDL")` |
+| 写 PRD | `task(subagent_type='prd-writer', description="为一个在线教育平台编写 PRD")` |
+| 评审文档 | `task(subagent_type='review-expert', description="评审 doc/prd/ 下的 PRD")` |
+| 架构设计 | `task(subagent_type='system-architect', description="基于 PRD 设计系统架构")` |
+| 详设拆分 | `task(subagent_type='task-decomposer', description="基于 SAD 生成详设")` |
+| 编码实现 | `task(subagent_type='code-developer', description="基于详设实现代码")` |
+| 代码评审 | `task(subagent_type='code-reviewer', description="评审 src/ 下的代码")` |
+| 测试设计 | `task(subagent_type='tester', description="阶段一：基于详设生成测试用例")` |
+| 测试执行 | `task(subagent_type='tester', description="阶段二：基于已确认用例生成测试代码并执行")` |
+| DDL 设计 | `task(subagent_type='dba-designer', description="基于详设生成 DDL")` |
 
 ---
 
@@ -240,7 +243,6 @@ your-project/
     │   ├── dba-designer/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
-    ├── plugins/        # skill-agent.ts
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
     ├── rules/          # AI 行为约束
     └── scripts/        # 9 个验证脚本
@@ -254,7 +256,7 @@ your-project/
 - **LC-FE-001**: 前端框架（Vue3/React/无）
 - **P0/P1/P2**: 问题严重等级。P0 阻断一切
 - **状态标记**: `🟡 草稿` → `🟢 已确认`
-- **单模块节奏**: 一次只生成一份文档/模块，等待确认后继续
+- **单模块节奏**: 一次只生成一份文档/模块，评审通过后继续下一阶段
 
 ---
 
@@ -267,7 +269,7 @@ A: 每 Phase 末尾通过 `ai_memory` 持久化进度和决策。下次启动 `i
 A: 自动重试最多 3 次，每次读取上一次的 P0/P1 问题清单定向修复。3 次仍失败则暂停等待人工介入。
 
 **Q: 如何只做某个阶段？**
-A: 直接调用对应的 `call_*` 工具，无需启动编排器。
+A: 使用 `task(subagent_type='pipeline-orchestrator', description="...")` 或在对话中说"启动 pipeline/用编排器"。编排器会自动完成强度匹配和阶段编排。
 
 **Q: ai-memory 起什么作用？**
 A: 不仅是记忆持久化工具，更是 pipeline 的**经验引擎**。Step 0 统一检索历史经验，各 Phase 消费，让后续阶段从过去的决策和踩坑中学习。
