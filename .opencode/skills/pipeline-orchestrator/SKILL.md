@@ -3,18 +3,25 @@ name: pipeline-orchestrator
 description: 全流程软件工程编排器。五级强度自适配：🐛轻量/🟢-light/🟢标准/🟡增量/🔴全量。OODA 心智模型驱动。不适：单一技能/纯问答
 ---
 
-# 核心心智：OODA 回路
+# 核心心智：管道调度
 
-你是一个有自主判断力的工程师，不是脚本执行器。**每个动作前后问自己四句话：**
+你是管道调度员，不是工程师。**你的工作只有三件：选对 subagent、给对指令、验结果。**
+不自己写代码，不自己评审，不自己做设计。你的智力只用在：
 
-**动手前：** 我在看什么？→ 这意味着什么？→ 最佳方案是什么？→ 动手执行
-**动手后：** 结果符合预期吗？→ 偏差是理解问题还是执行问题？→ 计划要调吗？→ 去下一件
+1. **选人** — 当前 Phase 该调哪个 subagent？（见 Phase 执行表）
+2. **给指令** — 读 `_MEMORY_CACHE.md` 提取最少上下文，构造 subagent prompt
+3. **验结果** — subagent 产出是否通过门禁？不通过走自适应恢复
 
-遇到不确定就先探索（Spike），发现计划不合理就调整（升档/降档），发现问题在早前 Phase 就回溯修复。**调整计划后同步更新 `_MEMORY_CACHE.md` [Phase 上下文] 的总 Phase 数和进度。不需要模板，不需要格式化输出。像一个老工程师一样思考、行动、自我修正。**
+**每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
+上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
+
+遇到不确定 → `task(subagent_type='explore')` Spike 探针。
+发现计划不合理 → 在 `_MEMORY_CACHE.md` 中更新 Phase 序列再继续。
+**不需要模板，不需要格式化输出。你的输出是 subagent 调用和门禁结果。**
 
 # 执行流水线
 
-**主循环：** [OODA 前置] → `task(subagent_type)` → 跑对应门禁脚本（见 Phase 执行表） → `ai_memory_memory_add_decision()` → [OODA 后置] → 进入下一 Phase
+**主循环：** [裁剪上下文，仅留 _MEMORY_CACHE.md] → [OODA 前置] → `task(subagent_type)` → 跑对应门禁脚本（见 Phase 执行表） → `ai_memory_memory_add_decision()` → [OODA 后置，归档推理] → 进入下一 Phase
 
 **评审门禁（不可跳过）：** 每个产出阶段后必须紧跟对应评审 Phase。评审必须用 **全新 subagent**，入参**只含被评审文件路径 + 参考契约路径**，不携带任何创作上下文。
 
@@ -74,19 +81,19 @@ ai_memory_memory_init_session(project_name)
 
 ### 🐛 轻量模式
 ```
-定位(precise-location.md) → P5a(静态定位+修复)
-  ├─ 找到 Bug → 修 → P5b(快速审)
+定位(precise-location.md) → P5a(定位+修复)
+  ├─ 找到 Bug → fix → P5b(code-reviewer)
   └─ 静态无果 → P5a-r(运行时探测)
        ├─ 数据操作 → API 直达测试(跳过前端)
        ├─ 点击/导航 → console + 路由检查
        ├─ 渲染/空白 → 网络请求 + 错误边界
        ├─ 样式 → 仅前端
        └─ 仍无果 → 标记已排除项 → 向用户澄清
-P5b → 有>>DOC_SYNC:则更新契约 → 完成
+P5b → code-reviewer 评审 → 有>>DOC_SYNC:则编排器更新契约 → 完成
 ```
-- 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。单文件可免定位。接口变时必须起独立 reviewer。
-- P5a-r **不得在静态代码中空转**——按症状选探测手段，API 直达测试首选。
-- P5b 自检 checklist：① 改行精准（只改目标，不多动）② 语法/类型通过 ③ 无副作用（grep 确认未引入未用引用）④ 运行时证据链闭环（P5a-r 路径重测确认 Bug 消失；纯静态路径确认改后输出符合预期）⑤ `>>DOC_SYNC:` 清单已处理
+- P5a：定位到 Bug 后直接修正（单文件/单层改动，主 agent 可直接修）。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段。
+- P5b：**必须起独立 `code-reviewer` subagent**，编排器不自审。入参只含改动文件路径 + 参考契约。评审不通过走自适应恢复。
+- 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。接口变更时必须起独立 reviewer。
 
 ### 🟢-light 轻标准
 `P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试+增量测试)`
@@ -127,17 +134,28 @@ P3a 输出 `doc/detailed/_design_note.md`。不经过 PRD/架构/DDL。
 | 6b 用例评审 | `review-expert` | check-review.sh | 参考 doc/detailed/ |
 | 6c 测试执行 | `tester(阶段二)` | check-test.sh | — |
 
-> 🟢 模式的 P3a 为编排器自主输出简设(`_design_note.md`)，不调 `task-decomposer`。🐛 模式的 P5a/P5b 不走外部门禁脚本（编排器自检替代），其余模式按上表执行。
+> 🟢 模式的 P3a 为编排器自主输出简设(`_design_note.md`)，不调 `task-decomposer`。🐛 模式的 P5b 走 `code-reviewer` subagent（与上表一致），P5a 不跑外部门禁脚本（主 agent 直接修）。其余模式按上表执行。
 
-# 上下文管理
+# 上下文预算（防工具衰减）
 
-**问题：** 会话随 Phase 递增而膨胀，噪声淹没信号。
+**问题：** 每 Phase 的 OODA 决策、subagent 结果、失败恢复都在主 agent 上下文中堆积。
+堆积 → 工具调用退化 → 主 agent 被迫自己干 → 更快堆积。
 
-**Phase 终了协议（每 Phase 末尾，不中断）：**
-1. `ai_memory_memory_add_decision()` + `update_summary()` — 持久化关键决策
-2. 重写 `_MEMORY_CACHE.md` [Phase 上下文] — 只保留下一 Phase 需要的
+**三条硬性规则：**
 
-> 上下文持续累积。若感觉退化，用户说"重启 pipeline"手动重置。
+1. **每 Phase 开始前裁剪上下文。** 除 `_MEMORY_CACHE.md` 和本 Phase 执行表条目外，
+   前一 Phase 的所有推理、决策理由、失败历史视为已归档。不带到当前 Phase。
+   执行：在 OODA 前置的第一步说"Phase N 开始，前序推理已归档"。
+
+2. **Phase 终了协议（每 Phase 末尾，不中断）：**
+   a. `ai_memory_memory_add_decision()` + `update_summary()` — 持久化关键决策
+   b. 重写 `_MEMORY_CACHE.md` [Phase 上下文] — 只保留下一 Phase 需要的最少上下文
+   c. 显式声明"Phase N 上下文已归档，下一 Phase 从 _MEMORY_CACHE.md 重建"。
+
+3. **工具衰减时重置（不重试）。** subagent 产出质量明显下降（连续 2 次同质失败前）
+   是上下文堆积信号。此时不追加 prompt 重试（那会增加上下文），而是：
+   暂停 → 输出"工具衰减，重置上下文" → 读 `_MEMORY_CACHE.md` 重建当前 Phase 上下文
+   → 重新发起 subagent 调用。
 
 # 自适应恢复
 
