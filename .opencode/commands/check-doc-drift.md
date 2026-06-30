@@ -44,3 +44,17 @@ Markdown 漂移报告，格式：
 ## P2 提示
 - [{模块}] {描述}
 ```
+
+## 修复（dispatch subagent 同步）
+
+发现 P0/P1 漂移后，**不直接 edit 文档**，按漂移文件类型 dispatch 对应 subagent：
+
+| 漂移文件 | subagent | 入参 |
+|---------|----------|------|
+| `doc/detailed/*.md` | `task-decomposer` | 漂移报告路径 + 目标文件路径 + 描述 |
+| `doc/arch/SAD.md` | `system-architect` | 漂移报告路径 + 目标文件路径 + 描述 |
+| `doc/prd/*.md` | `prd-writer` | 漂移报告路径 + 目标文件路径 + 描述 |
+
+**prompt 模板：** `根据漂移报告 {report_path} 同步 {path}，只修改涉及部分，不重写全文。`
+
+> 不含 `doc/` 前缀时默认走 `task-decomposer`。
