@@ -16,6 +16,24 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 > 
 > **验证阶段例外：** P6d（集成验证）启动服务、curl 验证属于编排器本职，主 agent 直接执行。P6c（测试执行）仍必须走 `tester(阶段二)` subagent。
 
+# 入口守卫（每次收到用户请求时执行）
+
+**每次收到用户请求后，立即执行 OODA 前置判断，不直接动手：**
+
+```
+观察：用户请求的内容是什么？涉及哪些文件/模块？
+判断：是否涉及新增文件、新增接口、新增业务逻辑？影响范围多大？
+决策：匹配流程强度（见影响域分析与强度匹配）
+行动：按匹配的强度执行对应 Phase 序列
+```
+
+**硬性规则（违反即退化）：**
+- 涉及**新增文件、新增接口、新增业务逻辑** → 至少 🟢-light，**必须走 subagent**。主 agent 不写代码、不创建文件。
+- 仅存量代码单文件 ≤15 行修正 → 🐛 轻量
+- 不确定时走 🟢 标准（宁高勿低）
+
+> 例外：纯信息查询（"akshare 支持什么？"）可直接回答，不触发 pipeline。
+
 **每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
 上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
 
@@ -73,13 +91,13 @@ ai_memory_memory_init_session(project_name)
 
 **流程强度匹配（自动选择，无需问用户）：**
 
-| 影响范围 | 强度 | Phase 序列 |
+| 影响范围 | 强度 | Phase 序列（粗体=subagent，普通=主 agent） |
 |----------|------|-----------|
-| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | P5a(定位修复) → P5b(快速审) → P6d(快速验证) |
-| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | P5a → P5b → P6c → P6d |
-| 同模块前后端，无 DDL | 🟢 **标准** | P3a(详设) → P3b → P5a → P5b → P6c → P6d |
-| 有 DDL 或新增子模块 | 🟡 **增量** | P3a→P3b → P4a→P4b → P5a→P5b → P6a→P6b→P6c→P6d |
-| 全新项目/跨模块重构 | 🔴 **全量** | P1a→P1b→P1c → P2a→P2b → P3a→P3b → P4a→P4b → P5a→P5b → P6a→P6b→P6c→P6d |
+| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | **P5a**(code-developer/直改) → **P5b**(code-reviewer) → P6d(主 agent curl) |
+| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
+| 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P4a**(dba-designer)→**P4b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P4a**→**P4b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d |
 
 **🟢-light vs 🟢：** 无新增 API + 无数据模型变更 = 🟢-light（跳过 P3a/b）。否则 🟢。
 
@@ -104,20 +122,20 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 - 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。
 
 ### 🟢-light 轻标准
-`P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试+增量测试) → P6d(集成验证)`
-跳过 P3a/b（设计确定性高）。P6c 必须为新增逻辑路径生成测试并执行。
+`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl)`
+跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 必须为新增逻辑路径生成测试并执行。
 
 ### 🟢 标准
-`P3a(详设) → P3b → P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试) → P6d(集成验证)`
-不经过 PRD/架构/DDL。P3a 走 `task-decomposer`（与 🟡/🔴 一致）。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl)`
+不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。
 
 ### 🟡 增量
-`P3a(详设) → P3b → P4a(增量DDL) → P4b → P5a(编码) → P5b → P6a(用例) → P6b → P6c(执行) → P6d(集成验证)`
-只对新模块输出详设+DDL，**禁止改现有模块代码**。
+`P3a(task-decomposer) → P3b(review-expert) → P4a(dba-designer) → P4b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl)`
+只对新模块输出详设+DDL，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。
 
 ### 🔴 全量
-`Phase 1a→1b→1c → 2a→2b → 3a→3b → 4a→4b → 5a→5b → 6a→6b→6c→6d`
-严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。
+`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P4a(dba-designer)→P4b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl)`
+严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
