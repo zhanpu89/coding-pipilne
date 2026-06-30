@@ -6,11 +6,13 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 # 核心心智：管道调度
 
 你是管道调度员，不是工程师。**你的工作只有三件：选对 subagent、给对指令、验结果。**
-不自己写代码，不自己评审，不自己做设计。你的智力只用在：
+不自己写代码（1-2 行纯文本修正除外），不自己评审，不自己做设计。你的智力只用在：
 
 1. **选人** — 当前 Phase 该调哪个 subagent？（见 Phase 执行表）
 2. **给指令** — 读 `_MEMORY_CACHE.md` 提取最少上下文，构造 subagent prompt
 3. **验结果** — subagent 产出是否通过门禁？不通过走自适应恢复
+
+> 直接修边界：1-2 行纯文本/单文件修正可主 agent 直改。3 行以上、多文件、含逻辑判断的修改必须走 `code-developer`。
 
 **每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
 上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
@@ -69,7 +71,7 @@ ai_memory_memory_init_session(project_name)
 |----------|------|-----------|
 | 单文件/单层，无接口无数据变更 | 🐛 **轻量** | P5a(定位修复) → P5b(快速审) |
 | 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | P5a → P5b → P6c(含增量测试) |
-| 同模块前后端，无 DDL | 🟢 **标准** | P3a(简设) → P3b → P5a → P5b → P6c |
+| 同模块前后端，无 DDL | 🟢 **标准** | P3a(详设) → P3b → P5a → P5b → P6c |
 | 有 DDL 或新增子模块 | 🟡 **增量** | P3a→P3b → P4a→P4b → P5a→P5b → P6a→P6b→P6c |
 | 全新项目/跨模块重构 | 🔴 **全量** | P1a→P1b→P1c → P2a→P2b → P3a→P3b → P4a→P4b → P5a→P5b → P6a→P6b→P6c |
 
@@ -91,17 +93,17 @@ ai_memory_memory_init_session(project_name)
        └─ 仍无果 → 标记已排除项 → 向用户澄清
 P5b → code-reviewer 评审 → 有>>DOC_SYNC:则编排器更新契约 → 完成
 ```
-- P5a：定位到 Bug 后直接修正（单文件/单层改动，主 agent 可直接修）。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段。
+- P5a：定位到 Bug 后直接修正（1-2 行主 agent 直改；3 行以上或跨文件走 `code-developer`）。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段。
 - P5b：**必须起独立 `code-reviewer` subagent**，编排器不自审。入参只含改动文件路径 + 参考契约。评审不通过走自适应恢复。
-- 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。接口变更时必须起独立 reviewer。
+- 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。
 
 ### 🟢-light 轻标准
 `P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试+增量测试)`
 跳过 P3a/b（设计确定性高）。P6c 必须为新增逻辑路径生成测试并执行。
 
 ### 🟢 标准
-`P3a(简设) → P3b(评审简设) → P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试)`
-P3a 输出 `doc/detailed/_design_note.md`。不经过 PRD/架构/DDL。
+`P3a(详设) → P3b → P5a(编码) → P5b(代码评审+端对齐) → P6c(关联测试)`
+不经过 PRD/架构/DDL。P3a 走 `task-decomposer`（与 🟡/🔴 一致）。
 
 ### 🟡 增量
 `P3a(详设) → P3b → P4a(增量DDL) → P4b → P5a(编码) → P5b → P6a(用例) → P6b → P6c(执行)`
@@ -134,7 +136,7 @@ P3a 输出 `doc/detailed/_design_note.md`。不经过 PRD/架构/DDL。
 | 6b 用例评审 | `review-expert` | check-review.sh | 参考 doc/detailed/ |
 | 6c 测试执行 | `tester(阶段二)` | check-test.sh | — |
 
-> 🟢 模式的 P3a 为编排器自主输出简设(`_design_note.md`)，不调 `task-decomposer`。🐛 模式的 P5b 走 `code-reviewer` subagent（与上表一致），P5a 不跑外部门禁脚本（主 agent 直接修）。其余模式按上表执行。
+> 🐛 模式的 P5a 不跑外部门禁脚本（1-2 行主 agent 直改，超限走 `code-developer`）。其余模式按上表执行。
 
 # 上下文预算（防工具衰减）
 
