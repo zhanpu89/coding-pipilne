@@ -17,7 +17,7 @@
 | 🐛 **轻量** | 单文件/单层改动，无接口无数据变更 | P5a(静态定位) → P5a-r(运行时探测) → P5b(快速审) | 改文案 / 修样式 / 按钮交互修复 |
 | 🟢-light **轻标准** | 同模块前后端改动，无DDL，无新增API | P5a → P5b → P6c(含增量测试) | 加字段 / 改UI展示已存数据 / 改返回字段 |
 | 🟢 **标准** | 同模块前后端改动，无 DDL | P3a(简设) → P3b → P5a → P5b → P6c | 加列表筛选 / 改业务逻辑不涉及 DB |
-| 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P4a → P4b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段 |
+| 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段（DDL 嵌入详设） |
 | 🔴 **全量** | 全新项目 / 跨模块重构 | Phase 1→2→3→4→5→6 全流程 | 从零开始的完整项目 |
 
 ### 症状驱动的智能排错
@@ -93,7 +93,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 1. 复制 `.opencode/`（skills/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
-4. 验证完整性（10 skills, 9 scripts, 5 rules）
+4. 验证完整性（10 skills, 8 scripts, 5 rules）
 
 ### 验证安装
 
@@ -123,16 +123,17 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 task(subagent_type='pipeline-orchestrator', description="为这个电商项目写一个完整的软件工程流水线")
 ```
 
-全流程各阶段产出：
+全流程各阶段产出（🔴 全量模式）：
 
 ```
 Phase 1a→1b→1c:  PRD 编写 → 需求评审              doc/prd/
 Phase 2a→2b:      架构设计 → 架构评审              doc/arch/
 Phase 3a→3b:      详细设计 → 详设评审              doc/detailed/
-Phase 4a→4b:      数据库 DDL 设计 → 评审            doc/db/
 Phase 5a→5b:      编码实现 → 代码评审              src/
 Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/tester/ + 测试报告
 ```
+
+DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段。
 
 ### 方式二：单独调用某个技能
 
@@ -227,7 +228,7 @@ your-project/
 │   ├── prd/            # PRD 文档
 │   ├── arch/           # 架构设计
 │   ├── detailed/       # 详细设计
-│   ├── db/             # DDL 脚本
+│   ├── db/             # DDL 脚本（手动生成时）
 │   ├── tester/         # 测试用例 + 报告
 │   └── review/         # 评审报告
 ├── src/                # 源码产出
@@ -245,7 +246,7 @@ your-project/
     │   └── pipeline-orchestrator/
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
     ├── rules/          # AI 行为约束
-    └── scripts/        # 9 个验证脚本
+    └── scripts/        # 8 个验证脚本
 ```
 
 ---

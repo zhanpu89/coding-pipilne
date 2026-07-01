@@ -106,8 +106,8 @@ ai_memory_memory_init_session(project_name)
 | 单文件/单层，无接口无数据变更 | 🐛 **轻量** | **P5a**(code-developer/直改) → **P5b**(code-reviewer) → P6d(主 agent curl) |
 | 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
 | 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
-| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P4a**(dba-designer)→**P4b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d |
-| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P4a**→**P4b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d |
 
 **🟢-light vs 🟢：** 无新增 API + 无数据模型变更 = 🟢-light（跳过 P3a/b）。否则 🟢。
 
@@ -140,12 +140,12 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。
 
 ### 🟡 增量
-`P3a(task-decomposer) → P3b(review-expert) → P4a(dba-designer) → P4b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl)`
-只对新模块输出详设+DDL，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl)`
+只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。
 
 ### 🔴 全量
-`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P4a(dba-designer)→P4b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl)`
-严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。
+`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl)`
+严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
@@ -163,8 +163,6 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 | 2b 架构评审 | `review-expert` | `check-review.sh` | 参考 doc/prd/ |
 | 3a 详设产出 | `task-decomposer` | `check-detailed.sh` | — |
 | 3b 详设评审 | `review-expert` | `check-review.sh` | 参考 doc/arch/ |
-| 4a DDL产出 | `dba-designer` | `check-db.sh` | — |
-| 4b DDL评审 | `review-expert` | `check-review.sh` | 参考 doc/detailed/ |
 | 5a 编码产出 | `code-developer` | `check-code.sh` | — |
 | 5b 代码评审 | `code-reviewer` | `check-review.sh` | 对照 doc/arch/, doc/detailed/ |
 | 6a 用例产出 | `tester(阶段一)` | `check-testcase.sh` | — |

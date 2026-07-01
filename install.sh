@@ -97,7 +97,7 @@ RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
 [ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 9 ] && ok "$SCRIPT_COUNT/9 scripts" || info "scripts: $SCRIPT_COUNT/9（预期 9）"
+[ "$SCRIPT_COUNT" -eq 8 ] && ok "$SCRIPT_COUNT/8 scripts" || info "scripts: $SCRIPT_COUNT/8（预期 8）"
 
 if [ "$ERRORS" -gt 0 ]; then
   fail "安装完成，但存在 $ERRORS 个问题，请检查"
