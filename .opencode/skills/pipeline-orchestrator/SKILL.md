@@ -18,31 +18,38 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 # 入口守卫（每次收到用户请求时执行）
 
-**收到用户请求后，你的第一个输出必须是 `task()` 调用，不能是自己分析或回答。**
-
-工作方式：
+**收到用户请求后，按以下顺序执行，不分析、不回答、不写业务代码：**
 
 ```
-用户请求
-  ├─ 纯信息查询（"akshare 支持什么？"）→ 直接回答，不触发 pipeline
-  └─ 涉及代码/文件/功能变更 → 立即 dispatch 对应 subagent，不分析、不写代码、不回答
-       ├─ 新增文件/新增接口/新增模块 → task(subagent_type='code-developer')
-       ├─ Bug 修复（单文件 ≤15 行可直改）→ task(subagent_type='code-developer') 或直改
-       ├─ 设计/文档任务 → task(subagent_type='task-decomposer'/'system-architect')
-       └─ 不确定 → task(subagent_type='explore') Spike 探针
+Step 1: 写 _MEMORY_CACHE.md（记录 Phase 上下文 + 流程强度 + 请求摘要）
+Step 2: dispatch task(subagent_type)（根据请求类型选人）
 ```
+
+**请求类型 → 第一步 dispatch：**
+
+| 请求类型 | 第一步 dispatch | _MEMORY_CACHE.md Phase 标注 |
+|---------|----------------|---------------------------|
+| 新增文件/新增接口/新增模块 | `task(code-developer)` | Phase 5a, 🟢-light |
+| Bug 修复（≤15 行可直改） | `task(code-developer)` 或直改 | Phase 5a, 🐛 |
+| 设计/文档任务 | `task(task-decomposer/system-architect)` | Phase 3a, 🟢 |
+| 不确定 | `task(explore)` Spike 探针 | — |
+| 纯信息查询 | 直接回答，不触发 pipeline | — |
 
 **硬性规则（违反即退化）：**
-- 涉及**新增文件、新增接口、新增业务逻辑** → **第一个动作必须是 `task(subagent_type='code-developer')`**。主 agent 不分析、不回答、不创建文件。
+- 涉及**新增文件、新增接口、新增业务逻辑** → **第一步必须是写 `_MEMORY_CACHE.md` + `task(code-developer)`**。主 agent 不分析、不回答、不创建文件。
 - 仅存量代码单文件 ≤15 行修正 → 可直改（直接修边界）
-- 不确定时走 `task(subagent_type='explore')`（宁高勿低）
+- 不确定时先写 `_MEMORY_CACHE.md` 再 `task(explore)`（宁高勿低）
+
+`_MEMORY_CACHE.md` 最少格式（入口守卫用，后续主循环补充）：
+```
+【当前 Phase 上下文】Phase: 5a | 强度: 🟢-light | 请求: {用户请求摘要} | 前序产出: (无)
+```
 
 **每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
 上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
 
-遇到不确定 → `task(subagent_type='explore')` Spike 探针。
 发现计划不合理 → 在 `_MEMORY_CACHE.md` 中更新 Phase 序列再继续。
-**不需要模板，不需要格式化输出。你的输出是 subagent 调用和门禁结果。**
+**不需要模板，不需要格式化输出。你的输出是 _MEMORY_CACHE.md + subagent 调用 + 门禁结果。**
 
 # 执行流水线
 
@@ -110,8 +117,8 @@ ai_memory_memory_init_session(project_name)
 
 ### 🐛 轻量模式
 ```
-定位(precise-location.md) → P5a(定位+修复)
-  ├─ 找到 Bug → fix → P5b(code-reviewer)
+定位(precise-location.md) → P5a(code-developer/直改)
+  ├─ 找到 Bug → fix（≤15 行直改，超限 code-developer）→ P5b(code-reviewer)
   └─ 静态无果 → P5a-r(运行时探测)
        ├─ 数据操作 → API 直达测试(跳过前端)
        ├─ 点击/导航 → console + 路由检查
