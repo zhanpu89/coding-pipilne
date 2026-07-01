@@ -18,21 +18,24 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 # 入口守卫（每次收到用户请求时执行）
 
-**每次收到用户请求后，立即执行 OODA 前置判断，不直接动手：**
+**收到用户请求后，你的第一个输出必须是 `task()` 调用，不能是自己分析或回答。**
+
+工作方式：
 
 ```
-观察：用户请求的内容是什么？涉及哪些文件/模块？
-判断：是否涉及新增文件、新增接口、新增业务逻辑？影响范围多大？
-决策：匹配流程强度（见影响域分析与强度匹配）
-行动：按匹配的强度执行对应 Phase 序列
+用户请求
+  ├─ 纯信息查询（"akshare 支持什么？"）→ 直接回答，不触发 pipeline
+  └─ 涉及代码/文件/功能变更 → 立即 dispatch 对应 subagent，不分析、不写代码、不回答
+       ├─ 新增文件/新增接口/新增模块 → task(subagent_type='code-developer')
+       ├─ Bug 修复（单文件 ≤15 行可直改）→ task(subagent_type='code-developer') 或直改
+       ├─ 设计/文档任务 → task(subagent_type='task-decomposer'/'system-architect')
+       └─ 不确定 → task(subagent_type='explore') Spike 探针
 ```
 
 **硬性规则（违反即退化）：**
-- 涉及**新增文件、新增接口、新增业务逻辑** → 至少 🟢-light，**必须走 subagent**。主 agent 不写代码、不创建文件。
-- 仅存量代码单文件 ≤15 行修正 → 🐛 轻量
-- 不确定时走 🟢 标准（宁高勿低）
-
-> 例外：纯信息查询（"akshare 支持什么？"）可直接回答，不触发 pipeline。
+- 涉及**新增文件、新增接口、新增业务逻辑** → **第一个动作必须是 `task(subagent_type='code-developer')`**。主 agent 不分析、不回答、不创建文件。
+- 仅存量代码单文件 ≤15 行修正 → 可直改（直接修边界）
+- 不确定时走 `task(subagent_type='explore')`（宁高勿低）
 
 **每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
 上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
