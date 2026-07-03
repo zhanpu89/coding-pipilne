@@ -1,6 +1,6 @@
 # coding-pipeline — OpenCode AI 软件工程流水线
 
-一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **10 个专用 skill** 和一个 **五级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
+一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **9 个专用 skill** 和一个 **五级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
 
 > 🏆 **里程碑版本** — 经两轮实地项目验证，编排器已完成从"固定流程"到"症状驱动、跨层探测、运行时验证"的进化，能自动适配从单行 Bug 修复到全栈新项目开发的任意场景。
 
@@ -93,7 +93,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 1. 复制 `.opencode/`（skills/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
-4. 验证完整性（10 skills, 8 scripts, 5 rules）
+4. 验证完整性（9 skills, 8 scripts, 5 rules）
 
 ### 验证安装
 
@@ -103,7 +103,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 可用的自定义工具有哪些？
 ```
 
-预期应看到 `pipeline-orchestrator`、`code-developer` 等 10 个 subagent。
+预期应看到 `pipeline-orchestrator`、`code-developer` 等 9 个 subagent。
 
 ---
 
@@ -149,7 +149,7 @@ DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段�
 | 代码评审 | `task(subagent_type='code-reviewer', description="评审 src/ 下的代码")` |
 | 测试设计 | `task(subagent_type='tester', description="阶段一：基于详设生成测试用例")` |
 | 测试执行 | `task(subagent_type='tester', description="阶段二：基于已确认用例生成测试代码并执行")` |
-| DDL 设计 | `task(subagent_type='dba-designer', description="基于详设生成 DDL")` |
+| DDL 设计（已整合至 task-decomposer） | — |
 
 ---
 
@@ -161,7 +161,7 @@ DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段�
 | Review Expert | `review-expert` | 全流程评审（需求/架构/详设/测试） |
 | System Architect | `system-architect` | 架构设计 + 技术栈选型 |
 | Task Decomposer | `task-decomposer` | 详设拆分 + 项目规则 |
-| DB Designer | `dba-designer` | DDL 脚本生成 |
+| DB Designer | （已整合至 task-decomposer，不再独立） | DDL 由 task-decomposer 在详设中产出 |
 | Code Developer | `code-developer` | 编码实现 |
 | Code Reviewer | `code-reviewer` | 代码质量评审 |
 | Tester | `tester` | 两阶段：用例设计 → 代码生成与执行 |
@@ -233,7 +233,7 @@ your-project/
 │   └── review/         # 评审报告
 ├── src/                # 源码产出
 └── .opencode/
-    ├── skills/         # 10 个技能定义
+    ├── skills/         # 9 个技能定义
     │   ├── prd-writer/
     │   ├── review-expert/
     │   ├── system-architect/
@@ -241,7 +241,6 @@ your-project/
     │   ├── code-developer/
     │   ├── code-reviewer/
     │   ├── tester/
-    │   ├── dba-designer/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）

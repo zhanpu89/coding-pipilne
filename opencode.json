@@ -41,12 +41,6 @@
       "mode": "subagent",
       "prompt": "{file:.opencode/skills/tester/SKILL.md}"
     },
-    "dba-designer": {
-      "description": "数据库设计，根据详设生成 DDL 脚本",
-      "mode": "subagent",
-      "prompt": "{file:.opencode/skills/dba-designer/SKILL.md}"
-    },
-
     "self-evolve": {
       "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
       "mode": "subagent"

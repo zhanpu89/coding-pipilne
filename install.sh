@@ -91,7 +91,7 @@ ERRORS=0
 [ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/ ($(find "$TARGET/.opencode/commands" -name '*.md' | wc -l) commands)" || info ".opencode/commands/ 不存在（可选）"
 
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
-[ "$SKILL_COUNT" -eq 10 ] && ok "$SKILL_COUNT/10 skills" || info "skills: $SKILL_COUNT/10"
+[ "$SKILL_COUNT" -eq 9 ] && ok "$SKILL_COUNT/9 skills" || info "skills: $SKILL_COUNT/9（预期 9）"
 
 RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
 [ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
@@ -113,5 +113,5 @@ echo -e "${GREEN}═════════════════════
 echo ""
 echo "  快速验证 — 在 OpenCode 中输入:"
 echo '    可用的自定义工具有哪些？'
-echo "  预期看到 call_prd_writer, call_review_expert, call_pipeline_orchestrator 等 10 个自定义工具"
+echo "  预期看到 call_prd_writer, call_review_expert, call_pipeline_orchestrator 等 9 个自定义工具"
 echo ""
