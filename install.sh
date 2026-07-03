@@ -52,13 +52,11 @@ cp "$OPTSRC/README.md" "$OPTDST/" 2>/dev/null || true
 # commands/（OpenCode 自动发现）
 cp -r "$OPTSRC/commands" "$OPTDST/" 2>/dev/null || info "commands/ 不存在，跳过"
 
-# ── 2. 创建 / 更新 package.json ──
+# ── 2. 创建 / 更新 package.json（强制覆盖）──
 PKG="$OPTDST/package.json"
-if [ -f "$PKG" ]; then
-  info "package.json 已存在"
-elif [ -f "$OPTSRC/package.json" ]; then
+if [ -f "$OPTSRC/package.json" ]; then
   cp "$OPTSRC/package.json" "$PKG"
-  ok "package.json 已创建（从源码同步）"
+  ok "package.json 已同步（从源码强制覆盖）"
 else
   echo '{"devDependencies":{"@types/node":"^25.9.3","typescript":"^5.8.0"}}' > "$PKG"
   ok "package.json 已创建（默认版本）"
