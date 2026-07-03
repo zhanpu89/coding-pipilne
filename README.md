@@ -1,6 +1,6 @@
 # coding-pipeline — OpenCode AI 软件工程流水线
 
-一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **10 个专用 skill** 和一个 **五级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
+一套基于 [OpenCode](https://opencode.ai) 的 AI 软件工程流水线系统。包含 **9 个专用 skill** 和一个 **五级强度自适配的全流程编排器**，覆盖从需求分析到测试执行的完整开发生命周期。
 
 > 🏆 **里程碑版本** — 经两轮实地项目验证，编排器已完成从"固定流程"到"症状驱动、跨层探测、运行时验证"的进化，能自动适配从单行 Bug 修复到全栈新项目开发的任意场景。
 
@@ -17,8 +17,8 @@
 | 🐛 **轻量** | 单文件/单层改动，无接口无数据变更 | P5a(静态定位) → P5a-r(运行时探测) → P5b(快速审) | 改文案 / 修样式 / 按钮交互修复 |
 | 🟢-light **轻标准** | 同模块前后端改动，无DDL，无新增API | P5a → P5b → P6c(含增量测试) | 加字段 / 改UI展示已存数据 / 改返回字段 |
 | 🟢 **标准** | 同模块前后端改动，无 DDL | P3a(简设) → P3b → P5a → P5b → P6c | 加列表筛选 / 改业务逻辑不涉及 DB |
-| 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P4a → P4b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段 |
-| 🔴 **全量** | 全新项目 / 跨模块重构 | Phase 1→2→3→4→5→6 全流程 | 从零开始的完整项目 |
+| 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段（DDL 嵌入详设） |
+| 🔴 **全量** | 全新项目 / 跨模块重构 | Phase 1→2→3→5→6 全流程 | 从零开始的完整项目 |
 
 ### 症状驱动的智能排错
 
@@ -93,7 +93,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 1. 复制 `.opencode/`（skills/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
-4. 验证完整性（10 skills, 9 scripts, 5 rules）
+4. 验证完整性（9 skills, 8 scripts, 5 rules）
 
 ### 验证安装
 
@@ -103,7 +103,7 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 可用的自定义工具有哪些？
 ```
 
-预期应看到 `pipeline-orchestrator`、`code-developer` 等 10 个 subagent。
+预期应看到 `pipeline-orchestrator`、`code-developer` 等 9 个 subagent。
 
 ---
 
@@ -123,16 +123,17 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 task(subagent_type='pipeline-orchestrator', description="为这个电商项目写一个完整的软件工程流水线")
 ```
 
-全流程各阶段产出：
+全流程各阶段产出（🔴 全量模式）：
 
 ```
 Phase 1a→1b→1c:  PRD 编写 → 需求评审              doc/prd/
 Phase 2a→2b:      架构设计 → 架构评审              doc/arch/
 Phase 3a→3b:      详细设计 → 详设评审              doc/detailed/
-Phase 4a→4b:      数据库 DDL 设计 → 评审            doc/db/
 Phase 5a→5b:      编码实现 → 代码评审              src/
 Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/tester/ + 测试报告
 ```
+
+DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段。
 
 ### 方式二：单独调用某个技能
 
@@ -148,7 +149,7 @@ Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/test
 | 代码评审 | `task(subagent_type='code-reviewer', description="评审 src/ 下的代码")` |
 | 测试设计 | `task(subagent_type='tester', description="阶段一：基于详设生成测试用例")` |
 | 测试执行 | `task(subagent_type='tester', description="阶段二：基于已确认用例生成测试代码并执行")` |
-| DDL 设计 | `task(subagent_type='dba-designer', description="基于详设生成 DDL")` |
+| DDL 设计（已整合至 task-decomposer） | — |
 
 ---
 
@@ -160,7 +161,7 @@ Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/test
 | Review Expert | `review-expert` | 全流程评审（需求/架构/详设/测试） |
 | System Architect | `system-architect` | 架构设计 + 技术栈选型 |
 | Task Decomposer | `task-decomposer` | 详设拆分 + 项目规则 |
-| DB Designer | `dba-designer` | DDL 脚本生成 |
+| DB Designer | （已整合至 task-decomposer，不再独立） | DDL 由 task-decomposer 在详设中产出 |
 | Code Developer | `code-developer` | 编码实现 |
 | Code Reviewer | `code-reviewer` | 代码质量评审 |
 | Tester | `tester` | 两阶段：用例设计 → 代码生成与执行 |
@@ -191,7 +192,7 @@ Phase 6a→6b→6c:   测试用例设计 → 用例评审 → 执行    doc/test
 
 ### 文档同步机制
 
-`code-developer` 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` 标记需同步的契约文档。**编排器（主 agent）负责按清单修改文档**，code-developer 不直接触碰契约。code-reviewer 评审时同时审查代码和更新后的文档，确保端对齐。
+`code-developer` 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` 标记需同步的契约文档。**编排器按清单 dispatch 对应 subagent 同步契约**（详设→task-decomposer，架构→system-architect，PRD→prd-writer），主 agent 不直接修改文档。code-reviewer 评审时同时审查代码和更新后的文档，确保端对齐。
 
 ### 熔断机制
 
@@ -227,12 +228,12 @@ your-project/
 │   ├── prd/            # PRD 文档
 │   ├── arch/           # 架构设计
 │   ├── detailed/       # 详细设计
-│   ├── db/             # DDL 脚本
+│   ├── db/             # DDL 脚本（手动生成时）
 │   ├── tester/         # 测试用例 + 报告
 │   └── review/         # 评审报告
 ├── src/                # 源码产出
 └── .opencode/
-    ├── skills/         # 10 个技能定义
+    ├── skills/         # 9 个技能定义
     │   ├── prd-writer/
     │   ├── review-expert/
     │   ├── system-architect/
@@ -240,12 +241,11 @@ your-project/
     │   ├── code-developer/
     │   ├── code-reviewer/
     │   ├── tester/
-    │   ├── dba-designer/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
     ├── rules/          # AI 行为约束
-    └── scripts/        # 9 个验证脚本
+    └── scripts/        # 8 个验证脚本
 ```
 
 ---

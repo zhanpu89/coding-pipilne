@@ -10,6 +10,6 @@
 
 ## 文档同步流程
 
-code-developer 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` → 编排器主 agent 按清单执行修改（版本 +1，追加变更记录）→ code-reviewer 评审代码+更新后文档。
+code-developer 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` → 编排器按漂移文件类型 dispatch 对应 subagent 同步契约 → code-reviewer 评审代码+更新后文档。
 
-> 契约文档的修改权在编排层，不在 code-developer。code-developer 只做标记，编排层统一执行，评审层统一验证。
+> 契约文档的修改权在编排层，不在 code-developer。code-developer 只做标记，编排层统一调度，评审层统一验证。

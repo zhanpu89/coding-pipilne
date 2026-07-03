@@ -4,12 +4,12 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 
 ## Rules
 
-| File | Load |
-|------|------|
-| `precise-location.md` | ⚡ always |
-| `endpoint-lock.md` | ⚡ always |
-| `code-discipline.md` | 🌀 on-demand |
-| `doc-alignment.md` | 🌀 on-demand |
+| File | 绑定 | 说明 |
+|------|------|------|
+| `precise-location.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，Step 0 定位用 |
+| `endpoint-lock.md` | **code-developer + 编排器** | 嵌入 code-developer SKILL.md + 编排器 `instructions` |
+| `code-discipline.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，编码纪律 |
+| `doc-alignment.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，契约对齐 |
 
 ## Conventions
 
