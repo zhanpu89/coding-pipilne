@@ -126,7 +126,7 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 ```
 - P5a：定位到 Bug 后**必须走 `code-developer` subagent** 修复。主 agent 不做任何文件修改。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段，定位后仍走 code-developer。
 - P5b：**必须起独立 `code-reviewer` subagent**，编排器不自审。入参只含改动文件路径 + 参考契约。评审不通过走自适应恢复。
-- 跳过 PRD/架构/详设/DDL/测试用例/门禁脚本。
+- 跳过 PRD/架构/详设/DDL/测试用例。门禁脚本：P5a-r 路径不跑，直接走 code-developer 修复时需跑 check-code.sh。
 
 ### 🟢-light 轻标准
 `P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl)`

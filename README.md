@@ -192,7 +192,7 @@ DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段�
 
 ### 文档同步机制
 
-`code-developer` 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` 标记需同步的契约文档。**编排器（主 agent）负责按清单修改文档**，code-developer 不直接触碰契约。code-reviewer 评审时同时审查代码和更新后的文档，确保端对齐。
+`code-developer` 输出 `>>DOC_SYNC: {文件路径} → {改动说明}` 标记需同步的契约文档。**编排器按清单 dispatch 对应 subagent 同步契约**（详设→task-decomposer，架构→system-architect，PRD→prd-writer），主 agent 不直接修改文档。code-reviewer 评审时同时审查代码和更新后的文档，确保端对齐。
 
 ### 熔断机制
 
