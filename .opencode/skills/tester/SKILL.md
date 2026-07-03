@@ -43,6 +43,13 @@ description: |
 
 **Step 2：** 加载 `resources/lang-test-patterns.md`（按 LC-001）。以用例文档为唯一依据生成测试代码。
 
+**Step 2.5（定向执行）：** 编排器在 prompt 中传入 `>>SCOPE: modules=X,Y`。收到时：
+
+- 按模块跑测试：`pytest tests/test_X*.py tests/test_Y*.py`（或对应语言等价命令）
+- 加全局冒烟：`pytest tests/test_health.py tests/test_smoke*.py`（必有）
+- scope 外的模块跑快速回归（每个模块按时间选 1-3 个核心用例）
+- 无 `>>SCOPE:` 时跑全量测试（向下兼容）
+
 **Step 3：** 执行（Java=mvnw, Python=pytest, Go=go test, Node=jest）。无代码则静态分析标 SKIP。
 
 **Step 3.5：** 缺陷 `BUG-{模块}-{序号}` + 严重程度 P0-P3。P0 立即暂停。

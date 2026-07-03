@@ -52,6 +52,13 @@ Step 2: dispatch task(subagent_type)（根据请求类型选人）
 
 **主循环：** [裁剪上下文，仅留 _MEMORY_CACHE.md] → [OODA 前置] → `task(subagent_type)` → 跑对应门禁脚本（`.opencode/scripts/` 下，见 Phase 执行表） → `ai_memory_memory_add_decision()` → [OODA 后置，归档推理] → 进入下一 Phase
 
+**变更范围驱动：** P5a(code-developer) 返回后提取 `>>SCOPE:` 标记，写入 _MEMORY_CACHE.md：
+```
+【变更范围】modules: order,payment | endpoints: POST /api/orders/* | 影响程度: 中
+```
+后续 P6c 按 scope 定向测试、P6d 按 scope 定向 curl、P7 按 scope 扫规范漂移。
+无 `>>SCOPE:` 标记时 scope=full（全量执行，向下兼容）。
+
 **评审门禁（不可跳过）：** 每个产出阶段后必须紧跟对应评审 Phase。评审必须用 **全新 subagent**，入参**只含被评审文件路径 + 参考契约路径**，不携带任何创作上下文。
 
 **失败恢复（自适应矩阵）：** 完整列表见[自适应恢复](#自适应恢复)（含 🅴 测试 Bug + 🅵 集成验证失败）。
@@ -74,7 +81,7 @@ ai_memory_memory_init_session(project_name)
 【当前 Phase 上下文】Phase: X/Y | 前序产出: {路径} | 关键决策: {列表} | 下一步: {描述}
 ```
 
-**持久化节奏：** 首个产出 Phase → `save_summary(status=in_progress)`；每 Phase 终了 → `add_decision` + `update_summary` + 重写 `_MEMORY_CACHE.md`；Step 7 → `update_summary(status=completed)` + 删临时文件。
+**持久化节奏：** 首个产出 Phase → `save_summary(status=in_progress)`；每 Phase 终了 → `add_decision` + `update_summary` + 重写 `_MEMORY_CACHE.md`；Step 8 → `update_summary(status=completed)` + 删临时文件。
 
 **文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记（格式：`>>DOC_SYNC: doc/detailed/xxx.md 字段变更` 或 `>>DOC_SYNC: doc/arch/SAD.md 配置变更`）。编排器**不直接 edit** 契约文档，而是按清单 dispatch 对应 subagent：
 
@@ -101,10 +108,10 @@ ai_memory_memory_init_session(project_name)
 | 影响范围 | 强度 | Phase 序列（粗体=subagent，普通=主 agent） |
 |----------|------|-----------|
 | 单文件/单层，无接口无数据变更 | 🐛 **轻量** | **P5a**(code-developer) → **P5b**(code-reviewer) → P6d(主 agent curl) |
-| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
-| 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) |
-| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d |
-| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d |
+| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7(规范漂移) |
+| 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7 |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d → P7 |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d → P7 |
 
 **🟢-light vs 🟢：** 无新增 API + 无数据模型变更 = 🟢-light（跳过 P3a/b）。否则 🟢。
 
@@ -129,26 +136,27 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 - 跳过 PRD/架构/详设/DDL/测试用例。门禁脚本：P5a-r 路径不跑，直接走 code-developer 修复时需跑 check-code.sh。
 
 ### 🟢-light 轻标准
-`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl)`
-跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 必须为新增逻辑路径生成测试并执行。
+`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
+跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl。
 
 ### 🟢 标准
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl)`
-不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
+不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向 + 全局冒烟，P6d 按 scope 定向 curl。
 
 ### 🟡 增量
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl)`
-只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
+只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
 
 ### 🔴 全量
-`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl)`
-严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。
+`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl) → P7(规范漂移)`
+严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
-- **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约（见文档同步规则）。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
-- **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
-- **6d：集成验证（新增）：** 启动服务 → 对关键端点（含所有修复的 Bug）执行 curl 验证 → 确认 HTTP 状态码 200 + 返回数据结构正确。**6d 由编排器主 agent 直接执行**（非 subagent）。6d 发现 Bug 进入 Bug-fix Loop。
+- **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约（见文档同步规则）。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
+- **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。无 scope 时全量测试。编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
+- **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope，只 curl 影响端点 + 健康检查。无 scope 时全量 curl。启动服务 → curl 验证 → 确认 HTTP 状态码 200 + 返回数据结构正确。**6d 由编排器主 agent 直接执行**（非 subagent）。6d 发现 Bug 进入 Bug-fix Loop。
+- **P7（规范漂移检测 —— 新增）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范（只 append 不覆盖）。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
 
 ### Phase 执行表
 
@@ -166,8 +174,9 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 | 6b 用例评审 | `review-expert` | `check-review.sh` | 参考 doc/detailed/ |
 | 6c 测试执行 | `tester(阶段二)` | `check-test.sh` | — |
 | 6d 集成验证 | **主 agent（非 subagent）** | curl 状态码 + 数据结构 | 对照 doc/detailed/ OpenAPI 定义 |
+| P7 规范漂移检测 | `task-decomposer`（有漂移时） | — | 对照 `项目规则.md`、`编码规范.md` |
 
-> 🐛 模式的 P5a 路径 P5a-r（运行时探测）时不跑外部门禁脚本。直接定位到 Bug 走 code-developer 修复时需跑 check-code.sh。其余模式按上表执行。
+> 🐛 模式的 P5a 路径 P5a-r（运行时探测）时不跑外部门禁脚本。直接定位到 Bug 走 code-developer 修复时需跑 check-code.sh。其余模式按上表执行。🐛 模式跳过 P7。
 
 # Bug-fix Loop（测试→修复→重验闭环）
 
@@ -226,6 +235,8 @@ P6c/P6d 发现 Bug
 
 各类型计数独立，进新 Phase 清零。
 
-# 最终清理（Step 7）
+# 最终清理（Step 8）
 
 `ai_memory_memory_update_summary(status=completed)` → 删 `_MEMORY_CACHE.md`、`_contract_check.md` → 输出 ✅ **Pipeline 完成** + 产出物汇总。
+
+> 若 P7 触发了规范更新，在摘要中注明：`⚡ 规范已进化: {变更摘要}`

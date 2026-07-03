@@ -52,6 +52,22 @@ description: |
 - 无 `TODO`/`FIXME` 残留
 - **全栈模式额外检查**：前端 API 调用路径与后端路由一致、请求/响应字段名匹配
 
+### 变更范围标记（编排器用）
+
+编码完成后在末尾输出 `>>SCOPE:` 标记，每行一个维度：
+
+```
+>>SCOPE: modules=order,payment
+>>SCOPE: endpoints=POST /api/orders/*,GET /api/orders/{id}
+>>SCOPE: files=src/services/order_service.py,src/routers/order.py
+```
+
+- `modules`：影响的业务模块名（与 `doc/detailed/` 目录名一致）
+- `endpoints`：新增/修改的 API 端点
+- `files`：实际修改的文件路径
+
+编排器据此决定 P6c 跑哪些测试、P6d 验哪些端点。无 `>>SCOPE:` 时默认全量执行。
+
 ## 规则
 
 - 详设为唯一来源，禁止偏离接口契约和业务规则
