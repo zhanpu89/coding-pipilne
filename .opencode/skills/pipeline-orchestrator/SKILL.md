@@ -156,7 +156,9 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 - **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约（见文档同步规则）。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
 - **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。无 scope 时全量测试。编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
 - **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope，只 curl 影响端点 + 健康检查。无 scope 时全量 curl。启动服务 → curl 验证 → 确认 HTTP 状态码 200 + 返回数据结构正确。**6d 由编排器主 agent 直接执行**（非 subagent）。6d 发现 Bug 进入 Bug-fix Loop。
-- **P7（规范漂移检测 —— 新增）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范（只 append 不覆盖）。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
+- **P7（规范漂移检测 —— 新增）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
+  - **prompt 模板：** `检测到系统性漂移：{列举偏移项}。追加以下规范到{doc/detailed/项目规则.md或编码规范.md}，只追加不修改已有内容：{偏移项 → 规范表述}。`
+  - **只 append 不覆盖：** 禁止修改已有条款，只在文档末尾追加新节。变更记录加一行 `P7-{日期} 自动进化: {摘要}`。
 
 ### Phase 执行表
 
