@@ -1,6 +1,6 @@
 # 测试报告模板
 
-输出 `doc/tester/{模块名}_测试报告[_RN].md`
+输出 `doc/tester/{模块名}_测试报告{_RN}.md`
 
 **头部：** TR-YYYYMMDD-NNN / 版本 / 状态 / 日期 / 关联用例
 

@@ -26,9 +26,20 @@ fi
 EMPTY_FILES=$(find "$SRC_DIR" -type f -empty 2>/dev/null | wc -l)
 [ "$EMPTY_FILES" -gt 0 ] && echo "⚠️  空文件: $EMPTY_FILES 个" && ERRORS=$((ERRORS + EMPTY_FILES))
 
-# ---- 编译/类型检查 ----
+# ---- 项目类型检测 ----
 PROJECT_DIR="$(dirname "$0")/../.."
 cd "$PROJECT_DIR" || exit 1
+
+PROJECT_TYPE="unknown"
+# 单类型检测（均带 unknown 守卫，防止互相覆盖）
+[ -f "pom.xml" ] || [ -f "build.gradle" ] || [ -f "build.gradle.kts" ] && [ "$PROJECT_TYPE" = "unknown" ] && PROJECT_TYPE="java"
+[ -f "go.mod" ] && [ "$PROJECT_TYPE" = "unknown" ] && PROJECT_TYPE="go"
+[ -f "Cargo.toml" ] && [ "$PROJECT_TYPE" = "unknown" ] && PROJECT_TYPE="rust"
+[ -f "package.json" ] && [ "$PROJECT_TYPE" = "unknown" ] && PROJECT_TYPE="node"
+[ -f "requirements.txt" ] || [ -f "setup.py" ] || [ -f "pyproject.toml" ] && [ "$PROJECT_TYPE" = "unknown" ] && PROJECT_TYPE="python"
+# polyglot 检测（优先覆盖单类型）
+[ -f "package.json" ] && ( [ -f "pyproject.toml" ] || [ -f "requirements.txt" ] || [ -f "setup.py" ] ) && PROJECT_TYPE="polyglot"
+[ -f "pom.xml" ] && [ -f "package.json" ] && PROJECT_TYPE="polyglot"
 
 echo ""
 echo "编译/类型检查:"
@@ -102,5 +113,41 @@ else
   echo "  ℹ️  未识别项目类型，跳过编译检查"
 fi
 
+# ---- Lint 检查（基于项目类型）----
+echo ""
+echo "Lint 检查:"
+
+case "$PROJECT_TYPE" in
+  node|polyglot)
+    # ESLint for JS/TS
+    ESLINT_CFG=""
+    for cfg in .eslintrc .eslintrc.json .eslintrc.js .eslintrc.yaml eslint.config.js .eslintrc.mjs; do
+      [ -f "$cfg" ] && ESLINT_CFG="$cfg" && break
+    done
+    if [ -n "$ESLINT_CFG" ] && command -v npx &>/dev/null; then
+      echo "  📋 检测到 ESLint 配置: $ESLINT_CFG"
+      npx eslint "$SRC_DIR" --max-warnings=50 2>&1 | tail -5 && echo "  ✅ ESLint 通过" || echo "  ⚠️ ESLint 发现问题（不影响门禁）"
+    else
+      echo "  ℹ️  未配置 ESLint，跳过 JS/TS lint"
+    fi
+    ;;&
+  python|polyglot)
+    # Ruff for Python
+    if command -v ruff &>/dev/null; then
+      echo "  📋 检测到 Ruff (Python)"
+      ruff check "$SRC_DIR" --quiet 2>&1 | tail -5 && echo "  ✅ Ruff 检查通过" || echo "  ⚠️ Ruff 发现问题（不影响门禁）"
+    elif command -v pylint &>/dev/null; then
+      echo "  📋 检测到 Pylint (Python)"
+      pylint "$SRC_DIR" --disable=C,R 2>&1 | tail -5 && echo "  ✅ Pylint 通过" || echo "  ⚠️ Pylint 发现问题（不影响门禁）"
+    else
+      echo "  ℹ️  ruff/pylint 不可用，跳过 Python lint"
+    fi
+    ;;&
+  java|go|rust|unknown)
+    echo "  ℹ️  $PROJECT_TYPE 项目无内置 lint 配置，跳过"
+    ;;
+esac
+
+echo ""
 [ "$ERRORS" -eq 0 ] && echo "✅ 代码检查通过" || echo "⚠️ 代码检查完成，$ERRORS 个问题"
 exit $([ "$ERRORS" -eq 0 ] && echo 0 || echo 1)

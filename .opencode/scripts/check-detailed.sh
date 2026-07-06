@@ -14,7 +14,7 @@ fi
 DESIGN_FILES=()
 while IFS= read -r -d '' f; do
   DESIGN_FILES+=("$f")
-done < <(find "$DETAILED_DIR" -maxdepth 1 -name "*.md" ! -name "编码规范.md" ! -name "项目规则.md" ! -name "_PROGRESS.md" -print0 2>/dev/null)
+done < <(find "$DETAILED_DIR" -maxdepth 1 -name "*.md" ! -name "编码规范.md" ! -name "项目规则.md" ! -name "_PROGRESS.md" ! -name "_MEMORY_CACHE.md" -print0 2>/dev/null)
 
 if [ ${#DESIGN_FILES[@]} -eq 0 ]; then
   echo "❌ 没有详设文档"
@@ -25,9 +25,9 @@ else
     echo "  $(basename "$f") ($SIZE bytes)"
     [ "$SIZE" -lt 500 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
 
-    # 检查必含章节
+    # 检查必含章节（仅匹配Markdown标题行，避免误匹配代码块/表格）
     for section in "功能描述" "业务规则" "OpenAPI\|接口" "DDL\|数据"; do
-      if ! grep -Eq "## .*($section)" "$f" 2>/dev/null; then
+      if ! grep -Eq "^## .*($section)" "$f" 2>/dev/null; then
         echo "⚠️  缺少 $section 章节"
         ERRORS=$((ERRORS + 1))
       fi
@@ -41,7 +41,9 @@ for req in "项目规则.md" "编码规范.md"; do
     echo "⚠️  $req 不存在"
     ERRORS=$((ERRORS + 1))
   else
-    echo "✅ $req 存在"
+    RULES_SIZE=$(wc -c < "$DETAILED_DIR/$req")
+    echo "✅ $req ($RULES_SIZE bytes)"
+    [ "$RULES_SIZE" -lt 100 ] && echo "⚠️  $req 文件过小" && ERRORS=$((ERRORS + 1))
   fi
 done
 

@@ -54,7 +54,7 @@ description: |
 
 **Step 3.5：** 缺陷 `BUG-{模块}-{序号}` + 严重程度 P0-P3。P0 立即暂停。
 
-**Step 4：** 加载 `templates/report-template.md`。输出 `doc/tester/{模块名}_测试报告[_RN].md`。
+**Step 4：** 加载 `templates/report-template.md`。输出 `doc/tester/{模块名}_测试报告{_RN}.md`。
 结论：✅ PASS≥90% | ⚠️ PASS≥80% | ❌ 有P0或PASS<80%
 
 ### 熔断

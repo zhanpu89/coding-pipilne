@@ -13,7 +13,7 @@ fi
 TC_FILES=()
 while IFS= read -r -d '' f; do
   TC_FILES+=("$f")
-done < <(find "$TESTER_DIR" \( -name "*测试用例*" -o -name "*testcase*" \) -print0 2>/dev/null)
+done < <(find "$TESTER_DIR" \( -name "*测试用例*" -o -name "*testcase*" -o -name "*用例*" \) -print0 2>/dev/null)
 
 if [ ${#TC_FILES[@]} -eq 0 ]; then
   echo "❌ 没有测试用例文档"
@@ -24,6 +24,20 @@ for f in "${TC_FILES[@]}"; do
   SIZE=$(wc -c < "$f")
   echo "  $(basename "$f") ($SIZE bytes)"
   [ "$SIZE" -lt 200 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
+
+  # 验证用例文档包含标准 TC-ID 格式
+  TC_COUNT=$(grep -cE "TC-[A-Z]+-(UNIT|INTG|SEC|PERF|FE)-[0-9]+" "$f" 2>/dev/null || echo 0)
+  if [ "$TC_COUNT" -gt 0 ]; then
+    echo "    → 含 $TC_COUNT 个标准格式用例 ID"
+
+    # 统计各种类型分布
+    for ttype in UNIT INTG SEC PERF FE; do
+      tcount=$(grep -cE "TC-[A-Z]+-${ttype}-[0-9]+" "$f" 2>/dev/null || echo 0)
+      [ "$tcount" -gt 0 ] && echo "      ${ttype}: $tcount"
+    done
+  else
+    echo "    ⚠️  未检测到标准格式用例 ID（期望格式: TC-{模块}-{类型}-{序号}）"
+  fi
 done
 
 [ "$ERRORS" -eq 0 ] && echo "✅ 测试用例检查通过" || echo "⚠️ 测试用例检查完成，$ERRORS 个问题"

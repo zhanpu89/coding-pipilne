@@ -31,11 +31,31 @@ for f in "${FILES[@]}"; do
   fi
 done
 
-# 检查关键章节
+# 检查关键章节（仅 Markdown 标题）
+REQUIRED_SECTIONS=("背景" "目标" "功能" "验收标准\|AC\|Acceptance")
 for f in "${FILES[@]}"; do
-  if ! grep -q "## " "$f" 2>/dev/null; then
+  # 文件基本结构
+  if ! grep -q "^## " "$f" 2>/dev/null; then
     echo "⚠️ 缺少 Markdown 章节标题: $f"
     ERRORS=$((ERRORS + 1))
+  fi
+
+  # 必备内容节（跳过概览文档，它结构不同）
+  BASENAME=$(basename "$f")
+  if [[ "$BASENAME" != _* ]] && [ "$SIZE" -gt 500 ]; then
+    for section in "${REQUIRED_SECTIONS[@]}"; do
+      if ! grep -Eq "^## .*($section)" "$f" 2>/dev/null; then
+        echo "⚠️  $BASENAME 缺少 $section 节"
+        ERRORS=$((ERRORS + 1))
+      fi
+    done
+  fi
+
+  # 检查技术术语侵入（PRD 不应含实现细节）
+  TECH_PATTERNS="SELECT |INSERT |DELETE |CREATE TABLE|ALTER TABLE|\.py$|\.java$|npm |pip |maven|gradle"
+  TECH_HITS=$(grep -cE "$TECH_PATTERNS" "$f" 2>/dev/null || echo 0)
+  if [ "$TECH_HITS" -gt 0 ]; then
+    echo "⚠️  $BASENAME 含 $TECH_HITS 处疑似技术术语（PRD 应避免实现细节）"
   fi
 done
 

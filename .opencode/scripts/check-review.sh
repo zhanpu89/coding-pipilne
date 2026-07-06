@@ -10,8 +10,8 @@ if [ ! -d "$REVIEW_DIR" ]; then
   exit 3
 fi
 
-# 找最新的评审报告（使用 null 分隔符处理含空格文件名）
-LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" \) -print0 | xargs -0 ls -t 2>/dev/null | head -1)
+# 找最新的评审报告（支持多种命名模式）
+LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -print0 | xargs -0 ls -t 2>/dev/null | head -1)
 if [ -z "$LATEST" ]; then
   echo "❌ 未找到评审报告"
   exit 3
@@ -19,34 +19,80 @@ fi
 
 echo "报告: $(basename "$LATEST")"
 
-# 提取评审结论行 (格式: "| 评审结论 | ✅ 通过 |")
-LINE=$(grep -i "评审结论" "$LATEST" 2>/dev/null | head -1)
+# ---- 提取评审结论 ----
+# 支持多种格式:
+#   格式A: | 评审结论 | ✅ 通过 |                  (表格)
+#   格式B: **评审结论：** ✅ 通过                   (强调)
+#   格式C: 评审结论：✅ 通过                       (纯文本)
+#   格式D: ✅ 通过（结论行直接含 emoji）           (直接)
+
+LINE=""
+
+# 尝试格式A: Markdown 表格行
+LINE=$(grep -i "评审结论" "$LATEST" 2>/dev/null | grep -v "^[[:space:]]*$" | head -1)
+
+# 尝试格式B/C: 行内 **结论文本** 或 结论文本：
 if [ -z "$LINE" ]; then
-  echo "❌ 未找到评审结论行"
+  LINE=$(grep -iE "^\*{0,2}\s*(评审结论|结论|判定)" "$LATEST" 2>/dev/null | head -1)
+fi
+
+# 尝试格式D: 仅含 emoji 判定符号的行
+if [ -z "$LINE" ]; then
+  LINE=$(grep -E "[✅⚠️❌]" "$LATEST" 2>/dev/null | grep -v "^[[:space:]]*$" | head -1)
+fi
+
+if [ -z "$LINE" ]; then
+  echo "❌ 未找到评审结论行（支持表格/强调/纯文本/emoji 格式）"
   exit 3
 fi
 
 echo "原始行: $LINE"
 
-# 提取结论 (取第二个 | 分隔的字段，去空格)
-CONCLUSION=$(echo "$LINE" | awk -F'|' '{print $3}' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-echo "结论: $CONCLUSION"
+# ---- 判定函数 ----
+# 从行内容中提取结论（支持表格和文本格式）
+determine_conclusion() {
+  local raw="$1"
+  local combined
+
+  # 表格格式: 取第二个 | 分隔的字段
+  if echo "$raw" | grep -q "|"; then
+    combined=$(echo "$raw" | awk -F'|' '{print $3}')
+  else
+    combined="$raw"
+  fi
+
+  # 分离 emoji 和文字判断
+  if echo "$combined" | grep -q "❌"; then
+    echo "❌"
+  elif echo "$combined" | grep -q "⚠️"; then
+    echo "⚠️"
+  elif echo "$combined" | grep -q "✅"; then
+    echo "✅"
+  elif echo "$combined" | grep -qiE "(不通过|失败|拒绝)"; then
+    echo "❌"
+  elif echo "$combined" | grep -qiE "(有条件|部分通过|警告)"; then
+    echo "⚠️"
+  elif echo "$combined" | grep -qiE "(通过|成功|合格)"; then
+    echo "✅"
+  else
+    echo "⚠️"  # 未知默认警告
+  fi
+}
+
+CONCLUSION=$(determine_conclusion "$LINE")
+echo "判定: $CONCLUSION"
 
 case "$CONCLUSION" in
-  *"❌"*|*"不通过"*)
-    echo "判定: ❌ 不通过"
+  "❌")
+    echo "结论: ❌ 不通过"
     exit 2
     ;;
-  *"⚠️"*|*"有条件"*)
-    echo "判定: ⚠️ 有条件通过"
+  "⚠️")
+    echo "结论: ⚠️ 有条件通过"
     exit 1
     ;;
-  *"✅"*|*"通过"*)
-    echo "判定: ✅ 通过"
+  "✅")
+    echo "结论: ✅ 通过"
     exit 0
-    ;;
-  *)
-    echo "判定: ⚠️ 未知结论，视为有条件通过"
-    exit 1
     ;;
 esac
