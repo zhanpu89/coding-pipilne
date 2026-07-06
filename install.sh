@@ -62,21 +62,27 @@ else
   ok "package.json 已创建（默认版本）"
 fi
 
-echo "  ├─ npm install (生产依赖)..."
-cd "$OPTDST" && npm install --silent --omit=dev 2>&1 | tail -1
+echo "  ├─ npm install..."
+cd "$OPTDST" && npm install --silent 2>&1 | tail -1
 cd "$SCRIPT_DIR"
 ok "npm 依赖安装完成"
 
 # ── 3. 复制根目录文件 ──
+# 注意：README.md 和 AGENTS.md 是项目说明/代理定义文件，对目标项目运行时无影响，
+#       故意不复制到目标目录，避免覆盖用户自己的同名文件。
 for f in opencode.json; do
   if [ -f "$SCRIPT_DIR/$f" ]; then
     cp "$SCRIPT_DIR/$f" "$TARGET/"
     ok "$f"
   fi
 done
+# README.md（不安装）
+[ -f "$SCRIPT_DIR/README.md" ] && info "README.md 跳过（设计上不安装）" || true
+# AGENTS.md（不安装）
+[ -f "$SCRIPT_DIR/AGENTS.md" ] && info "AGENTS.md 跳过（设计上不安装）" || true
 
 
-# ── 5. 验证 ──
+# ── 4. 验证 ──
 echo ""
 echo -e "${CYAN}── 验证 ──${NC}"
 ERRORS=0
@@ -95,7 +101,7 @@ RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
 [ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 8 ] && ok "$SCRIPT_COUNT/8 scripts" || info "scripts: $SCRIPT_COUNT/8（预期 8）"
+[ "$SCRIPT_COUNT" -eq 9 ] && ok "$SCRIPT_COUNT/9 scripts" || info "scripts: $SCRIPT_COUNT/9（预期 9）"
 
 if [ "$ERRORS" -gt 0 ]; then
   fail "安装完成，但存在 $ERRORS 个问题，请检查"
