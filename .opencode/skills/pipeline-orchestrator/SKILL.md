@@ -19,27 +19,38 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 **收到用户请求后，按以下顺序执行，不分析、不回答、不写业务代码：**
 
 ```
-Step 1: 写 _MEMORY_CACHE.md（记录 Phase 上下文 + 流程强度 + 请求摘要）
-Step 2: dispatch task(subagent_type)（根据请求类型选人）
+Step 0: 影响域分析与强度匹配 → 确定流程强度（见下节）
+Step 1: 写 _MEMORY_CACHE.md（记录 Phase 计划 + 强度 + 请求摘要）
+Step 2: 按 Phase 计划执行第一个 Phase（dispatch subagent 或 precise-location）
 ```
 
-**请求类型 → 第一步 dispatch：**
+**流程强度决定：** 先用"影响域分析与强度匹配"节的技术栈扫描 + 影响域层级确定强度（🐛/🟢-light/🟢/🟡/🔴）。
+确认是否有 DDL？是否有新增 API？是否跨模块？是全新项目还是单文件改动？
+然后从下表选取对应 Phase 序列写入 _MEMORY_CACHE.md。
 
-| 请求类型 | 第一步 dispatch | _MEMORY_CACHE.md Phase 标注 |
-|---------|----------------|---------------------------|
-| 新增文件/新增接口/新增模块 | `task(code-developer)` | Phase 5a, 🟢-light |
-| Bug 修复 | `task(code-developer)` | Phase 5a, 🐛 |
-| 设计/文档任务 | `task(task-decomposer/system-architect)` | Phase 3a, 🟢 |
-| 不确定 | `task(explore)` Spike 探针 | — |
-| 纯信息查询 | 直接回答，不触发 pipeline | — |
+**Phase 序列选择表（确定后整个序列写入 _MEMORY_CACHE.md，不是只写第一个 Phase）：**
 
-**硬性规则（违反即退化）：**
-- **所有文件创建/修改** → **第一步必须是写 `_MEMORY_CACHE.md` + `task(code-developer)`**。主 agent 不分析、不回答、不创建/修改文件。
-- 不确定时先写 `_MEMORY_CACHE.md` 再 `task(explore)`（宁高勿低）
+| 条件 | 强度 | Phase 序列 |
+|------|------|-----------|
+| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位(precise-location) → **P5a** → **P5b** → P6d |
+| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7 |
+| 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b** → **P6c** → P6d → P7 |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7 |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7 |
+| 纯信息查询 | — | 直接回答，不触发 pipeline |
+
+> **粗体 = subagent 执行，普通 = 主 agent 执行。所有 subagent 步骤主 agent 一律不准动手。**
+
+**硬性规则（违反即退化，逐条检查）：**
+- 🔴 **主 agent 零动手原则：** 除非 Phase 表标注"主 agent"（仅 P6d），否则**必须 dispatch subagent**。不准自己写/改/删任何文件。
+- 🐛 **Bug 修复必须先定位再修：** 入口守卫 Step 0 强度=🐛 时，第一个步骤不是 dispatch code-developer，而是**主 agent 执行 `precise-location.md` 定位**。定位完成后再 dispatch code-developer 修复。
+- 📝 **所有文件创建/修改必须先写 `_MEMORY_CACHE.md` 再 dispatch**。主 agent 不分析、不回答、不创建/修改文件。
+- ❓ 不确定时宁高勿低：先写 `_MEMORY_CACHE.md` 再 `task(explore)` 探针。
 
 `_MEMORY_CACHE.md` 最少格式（入口守卫用，后续主循环补充）：
 ```
-【当前 Phase 上下文】Phase: 5a | 强度: 🟢-light | 请求: {用户请求摘要} | 前序产出: (无)
+【当前 Phase 上下文】Phase: 5a (of 🟢-light) | 请求: {请求摘要} | 序列: P5a→P5b→P6c→P6d→P7
+【前序产出】(无)
 ```
 
 **每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
@@ -50,7 +61,25 @@ Step 2: dispatch task(subagent_type)（根据请求类型选人）
 
 # 执行流水线
 
-**主循环：** [裁剪上下文，仅留 _MEMORY_CACHE.md] → [OODA 前置] → `task(subagent_type)` → 跑对应门禁脚本（`.opencode/scripts/` 下，见 Phase 执行表） → `ai_memory_memory_add_decision()` → [OODA 后置，归档推理] → 进入下一 Phase
+**主循环（每条严格按序执行，缺一不可）：**
+
+```
+步骤 1: 裁剪上下文 — 仅留 _MEMORY_CACHE.md（声明"Phase N 开始，前序推理已归档"）
+步骤 2: OODA 前置 — 观察当前 Phase 产出目标 → 判断用什么 subagent/prompt
+步骤 3: 🚫 主 agent 不动手 — dispatch task(subagent_type)，入参只含最少必要上下文
+步骤 4: 🚪 门禁 — task() 返回后**立即执行对应门禁脚本**：
+
+        从_Phase 执行表_取当前 Phase 的门禁脚本路径，
+        用 bash 执行：`bash .opencode/scripts/{check-xxx.sh}`
+        ✅ 返回 0 → 门禁通过，继续
+        ❌ 返回非 0 → 查看错误原因 → 走"自适应恢复"
+
+步骤 5: 🤖 ai_memory_memory_add_decision() + update_summary() — 持久化关键决策
+步骤 6: OODA 后置 — 归档本 Phase 推理，重写 _MEMORY_CACHE.md（仅保留下一 Phase 需要的最少上下文）
+步骤 7: 进入下一 Phase（回到步骤 1）
+```
+
+> 🚪 **门禁是强制步骤，不是可选步骤。** 没有门禁通过的产出视为未验证。每 Phase 的 OODA 后置中必须包含门禁结果。
 
 **变更范围驱动：** P5a(code-developer) 返回后提取 `>>SCOPE:` 标记，写入 _MEMORY_CACHE.md：
 ```
@@ -107,7 +136,7 @@ ai_memory_memory_init_session(project_name)
 
 | 影响范围 | 强度 | Phase 序列（粗体=subagent，普通=主 agent） |
 |----------|------|-----------|
-| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | **P5a**(code-developer) → **P5b**(code-reviewer) → P6d(主 agent curl) |
+| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位(precise-location) → **P5a**(code-developer) → **P5b**(code-reviewer) → P6d(主 agent curl) |
 | 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7(规范漂移) |
 | 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7 |
 | 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d → P7 |
@@ -132,24 +161,56 @@ ai_memory_memory_init_session(project_name)
 P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subagent 同步契约 → P6d(快速 curl 验证) → 完成
 ```
 - P5a：定位到 Bug 后**必须走 `code-developer` subagent** 修复。主 agent 不做任何文件修改。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段，定位后仍走 code-developer。
+  - 🚪 **门禁：** P5a(code-developer) 返回后立即执行 `bash .opencode/scripts/check-code.sh`。P5a-r 路径不跑。
 - P5b：**必须起独立 `code-reviewer` subagent**，编排器不自审。入参只含改动文件路径 + 参考契约。评审不通过走自适应恢复。
-- 跳过 PRD/架构/详设/DDL/测试用例。门禁脚本：P5a-r 路径不跑，直接走 code-developer 修复时需跑 check-code.sh。
+  - 🚪 **门禁：** P5b 返回后立即执行 `bash .opencode/scripts/check-review.sh`。
+- 跳过 PRD/架构/详设/DDL/测试用例。
 
 ### 🟢-light 轻标准
 `P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
 跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl。
+- 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
+- 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
+- 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
 
 ### 🟢 标准
 `P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
 不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向 + 全局冒烟，P6d 按 scope 定向 curl。
+- 🚪 **P3a 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-detailed.sh`
+- 🚪 **P3b 门禁：** review-expert 返回后立即执行 `bash .opencode/scripts/check-review.sh`
+- 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
+- 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
+- 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
 
 ### 🟡 增量
 `P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
 只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
+- 🚪 **P3a 门禁：** `bash .opencode/scripts/check-detailed.sh`
+- 🚪 **P3b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P5a 门禁：** `bash .opencode/scripts/check-code.sh`
+- 🚪 **P5b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
+- 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
+- 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
 
 ### 🔴 全量
 `P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl) → P7(规范漂移)`
 严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
+- 🚪 **P1b 门禁：** `bash .opencode/scripts/check-prd.sh`
+- 🚪 **P1c 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P2a 门禁：** `bash .opencode/scripts/check-arch.sh`
+- 🚪 **P2b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P3a 门禁：** `bash .opencode/scripts/check-detailed.sh`
+- 🚪 **P3b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P5a 门禁：** `bash .opencode/scripts/check-code.sh`
+- 🚪 **P5b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
+- 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
+- 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
+- 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
@@ -179,7 +240,7 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 | 6d 集成验证 | **主 agent（非 subagent）** | curl 状态码 + 数据结构 | 对照 doc/detailed/ OpenAPI 定义 |
 | P7 规范漂移检测 | `task-decomposer`（有漂移时） | `check-drift.sh` | 对照 `项目规则.md`、`编码规范.md` |
 
-> 🐛 模式的 P5a 路径 P5a-r（运行时探测）时不跑外部门禁脚本。直接定位到 Bug 走 code-developer 修复时需跑 check-code.sh。其余模式按上表执行。🐛 模式跳过 P7。
+> ⚡ **门禁铁律：** 🐛 模式的 P5a-r（运行时探测）路径不跑 check-code.sh。其余所有产出 Phase 的 subagent 返回后**必须立即**执行对应门禁脚本，无一例外。门禁未通过 → 走自适应恢复，不能跳过进入下一 Phase。🐛 模式跳过 P7。
 
 # Bug-fix Loop（测试→修复→重验闭环）
 
