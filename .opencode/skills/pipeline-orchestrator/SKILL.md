@@ -66,20 +66,24 @@ Step 2: 按 Phase 计划执行第一个 Phase（dispatch subagent 或 precise-lo
 ```
 步骤 1: 裁剪上下文 — 仅留 _MEMORY_CACHE.md（声明"Phase N 开始，前序推理已归档"）
 步骤 2: OODA 前置 — 观察当前 Phase 产出目标 → 判断用什么 subagent/prompt
-步骤 3: 🚫 主 agent 不动手 — dispatch task(subagent_type)，入参只含最少必要上下文
-步骤 4: 🚪 门禁 — task() 返回后**立即执行对应门禁脚本**：
+步骤 3: 🔍 审计快照 — `bash .opencode/scripts/check-audit.sh snapshot {Phase}`（记录当前文件状态，供下阶段审计用）
+步骤 4: 🚫 主 agent 不动手 — dispatch task(subagent_type)，入参只含最少必要上下文
+步骤 5: 🚪 门禁 — task() 返回后**立即执行对应门禁脚本**：
 
         从_Phase 执行表_取当前 Phase 的门禁脚本路径，
         用 bash 执行：`bash .opencode/scripts/{check-xxx.sh}`
         ✅ 返回 0 → 门禁通过，继续
         ❌ 返回非 0 → 查看错误原因 → 走"自适应恢复"
 
-步骤 5: 🤖 ai_memory_memory_add_decision() + update_summary() — 持久化关键决策
-步骤 6: OODA 后置 — 归档本 Phase 推理，重写 _MEMORY_CACHE.md（仅保留下一 Phase 需要的最少上下文）
-步骤 7: 进入下一 Phase（回到步骤 1）
+步骤 6: 🔍 审计验证 — `bash .opencode/scripts/check-audit.sh verify {Phase}`
+        ⚠️ 审计发现未经 subagent 授权的文件修改 → 标记违规，走自适应恢复
+步骤 7: 🤖 ai_memory_memory_add_decision() + update_summary() — 持久化关键决策
+步骤 8: OODA 后置 — 归档本 Phase 推理，重写 _MEMORY_CACHE.md（仅保留下一 Phase 需要的最少上下文）
+步骤 9: 进入下一 Phase（回到步骤 1）
 ```
 
 > 🚪 **门禁是强制步骤，不是可选步骤。** 没有门禁通过的产出视为未验证。每 Phase 的 OODA 后置中必须包含门禁结果。
+> 🔍 **审计快照在每 Phase 开始时拍摄、结束时校验。** 若发现文件在 subagent 调用范围外被修改，视为违反零动手原则。
 
 **变更范围驱动：** P5a(code-developer) 返回后提取 `>>SCOPE:` 标记，写入 _MEMORY_CACHE.md：
 ```
@@ -110,7 +114,7 @@ ai_memory_memory_init_session(project_name)
 【当前 Phase 上下文】Phase: X/Y | 前序产出: {路径} | 关键决策: {列表} | 下一步: {描述}
 ```
 
-**持久化节奏：** 首个产出 Phase → `save_summary(status=in_progress)`；每 Phase 终了 → `add_decision` + `update_summary` + 重写 `_MEMORY_CACHE.md`；Step 8 → `update_summary(status=completed)` + 删临时文件。
+**持久化节奏：** 首个产出 Phase → `save_summary(status=in_progress)`；每 Phase 终了 → `add_decision` + `update_summary` + 重写 `_MEMORY_CACHE.md`；最终清理 → `update_summary(status=completed)` + 删临时文件。
 
 **文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记（格式：`>>DOC_SYNC: doc/detailed/xxx.md 字段变更` 或 `>>DOC_SYNC: doc/arch/SAD.md 配置变更`）。编排器**不直接 edit** 契约文档，而是按清单 dispatch 对应 subagent：
 
@@ -164,29 +168,32 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
   - 🚪 **门禁：** P5a(code-developer) 返回后立即执行 `bash .opencode/scripts/check-code.sh`。P5a-r 路径不跑。
 - P5b：**必须起独立 `code-reviewer` subagent**，编排器不自审。入参只含改动文件路径 + 参考契约。评审不通过走自适应恢复。
   - 🚪 **门禁：** P5b 返回后立即执行 `bash .opencode/scripts/check-review.sh`。
+- P6d：`bash .opencode/scripts/check-integration.sh`（自动启动服务 + curl 验证）。
 - 跳过 PRD/架构/详设/DDL/测试用例。
 
 ### 🟢-light 轻标准
-`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
-跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl。
+`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
+跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl（通过 check-integration.sh 自动执行）。
 - 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
 - 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
 - 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
+- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
 - 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
 
 ### 🟢 标准
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
-不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向 + 全局冒烟，P6d 按 scope 定向 curl。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
+不经过 PRD/架构/DDL。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
 - 🚪 **P3a 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-detailed.sh`
 - 🚪 **P3b 门禁：** review-expert 返回后立即执行 `bash .opencode/scripts/check-review.sh`
 - 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
 - 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
 - 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
+- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
 - 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
 
 ### 🟡 增量
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(主 agent curl) → P7(规范漂移)`
-只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
+`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
+只对新模块输出详设，**禁止改现有模块代码**。P5a **必须走 `code-developer` subagent**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
 - 🚪 **P3a 门禁：** `bash .opencode/scripts/check-detailed.sh`
 - 🚪 **P3b 门禁：** `bash .opencode/scripts/check-review.sh`
 - 🚪 **P5a 门禁：** `bash .opencode/scripts/check-code.sh`
@@ -194,11 +201,12 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 - 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
 - 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
 - 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
+- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
 - 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
 
 ### 🔴 全量
-`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(主 agent curl) → P7(规范漂移)`
-严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟。
+`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(check-integration.sh) → P7(规范漂移)`
+严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。所有产出 Phase 均走 subagent，主 agent 不写代码。DDL 由 task-decomposer 在详设中产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
 - 🚪 **P1b 门禁：** `bash .opencode/scripts/check-prd.sh`
 - 🚪 **P1c 门禁：** `bash .opencode/scripts/check-review.sh`
 - 🚪 **P2a 门禁：** `bash .opencode/scripts/check-arch.sh`
@@ -210,13 +218,18 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 - 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
 - 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
 - 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
+- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
 - 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
 - **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约（见文档同步规则）。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
 - **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。无 scope 时全量测试。编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
-- **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope，只 curl 影响端点 + 健康检查。无 scope 时全量 curl。启动服务 → curl 验证 → 确认 HTTP 状态码 200 + 返回数据结构正确。**6d 由编排器主 agent 直接执行**（非 subagent）。6d 发现 Bug 进入 Bug-fix Loop。
+- **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 `check-integration.sh`，只 curl 影响端点 + 健康检查。执行 `bash .opencode/scripts/check-integration.sh`。脚本自动检测项目类型、启动服务、curl 各端点、验证 HTTP 状态码和 JSON 合法性、生成集成验证报告到 `doc/tester/integration-report.md`。
+  - `SCOPE_ENDPOINTS` 环境变量可覆盖端点列表（逗号分隔），不传则从 `_MEMORY_CACHE.md` 的 `>>SCOPE: endpoints=` 读取
+  - 无 scope 时默认验 `/health` 和 `/api/health`
+  - 脚本返回 0 → 通过，返回 1 → 进入 Bug-fix Loop
+  - 6d 发现 Bug 进入 Bug-fix Loop。
 - **P7（规范漂移检测）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
   - **prompt 模板：** `检测到系统性漂移：{列举偏移项}。追加以下规范到{doc/detailed/项目规则.md或编码规范.md}，只追加不修改已有内容：{偏移项 → 规范表述}。`
   - **只 append 不覆盖：** 禁止修改已有条款，只在文档末尾追加新节。变更记录加一行 `P7-{日期} 自动进化: {摘要}`。
@@ -237,10 +250,12 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 | 6a 用例产出 | `tester(阶段一)` | `check-testcase.sh` | — |
 | 6b 用例评审 | `review-expert` | `check-review.sh` | 参考 doc/detailed/ |
 | 6c 测试执行 | `tester(阶段二)` | `check-test.sh` | — |
-| 6d 集成验证 | **主 agent（非 subagent）** | curl 状态码 + 数据结构 | 对照 doc/detailed/ OpenAPI 定义 |
+| 6d 集成验证 | **主 agent（调用 check-integration.sh）** | `check-integration.sh`（自动启动服务 + curl 验证） | 对照 doc/detailed/ OpenAPI 定义 |
 | P7 规范漂移检测 | `task-decomposer`（有漂移时） | `check-drift.sh` | 对照 `项目规则.md`、`编码规范.md` |
 
 > ⚡ **门禁铁律：** 🐛 模式的 P5a-r（运行时探测）路径不跑 check-code.sh。其余所有产出 Phase 的 subagent 返回后**必须立即**执行对应门禁脚本，无一例外。门禁未通过 → 走自适应恢复，不能跳过进入下一 Phase。🐛 模式跳过 P7。
+> 
+> ⚡ **审计铁律：** 每个 Phase 开始前跑 `check-audit.sh snapshot`、结束后跑 `check-audit.sh verify`。审计发现未经 subagent 授权的文件修改 → 走自适应恢复。审计是零动手原则的硬性保障。
 
 # Bug-fix Loop（测试→修复→重验闭环）
 
@@ -253,7 +268,7 @@ P6c/P6d 发现 Bug
   → 写 _MEMORY_CACHE.md 记录 Bug 清单（接口/错误/根因推测/文件范围）
   → [回退到 P5a] task(subagent_type='code-developer') 修复
     （所有修复走 code-developer，无任何例外）
-  → [回归] 更新测试 + 重新 P6c（走 tester subagent）+ P6d（主 agent curl）
+  → [回归] 更新测试 + 重新 P6c（走 tester subagent）+ P6d（bash .opencode/scripts/check-integration.sh）
   → Bug 清零？→ 检查是否需要 DOC_SYNC（修复是否改变了外部接口/字段名/行为）→ 按文档类型 dispatch subagent 同步契约 → 继续下一 Phase
   → 仍有 Bug？→ 再次进入 Loop（同一 Bug 3 次仍不通过 → 报告用户）
 ```
@@ -299,8 +314,8 @@ P6c/P6d 发现 Bug
 
 各类型计数独立，进新 Phase 清零。
 
-# 最终清理（Step 8）
+# 最终清理（Step 10）
 
-`ai_memory_memory_update_summary(status=completed)` → 删 `_MEMORY_CACHE.md`、`_contract_check.md` → 输出 ✅ **Pipeline 完成** + 产出物汇总。
+`ai_memory_memory_update_summary(status=completed)` → `bash .opencode/scripts/check-audit.sh clean` → 删 `_MEMORY_CACHE.md`、`_contract_check.md` → 输出 ✅ **Pipeline 完成** + 产出物汇总。
 
 > 若 P7 触发了规范更新，在摘要中注明：`⚡ 规范已进化: {变更摘要}`

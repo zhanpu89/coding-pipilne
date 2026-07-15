@@ -23,7 +23,7 @@ fi
 for f in "${TC_FILES[@]}"; do
   SIZE=$(wc -c < "$f")
   echo "  $(basename "$f") ($SIZE bytes)"
-  [ "$SIZE" -lt 200 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
+  [ "$SIZE" -lt 500 ] && echo "⚠️  文件过小(＜500B)" && ERRORS=$((ERRORS + 1))
 
   # 验证用例文档包含标准 TC-ID 格式
   TC_COUNT=$(grep -cE "TC-[A-Z]+-(UNIT|INTG|SEC|PERF|FE)-[0-9]+" "$f" 2>/dev/null || echo 0)

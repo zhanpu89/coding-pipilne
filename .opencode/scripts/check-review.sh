@@ -11,7 +11,7 @@ if [ ! -d "$REVIEW_DIR" ]; then
 fi
 
 # 找最新的评审报告（支持多种命名模式）
-LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -print0 | xargs -0 ls -t 2>/dev/null | head -1)
+LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -printf '%T@ %p\0' 2>/dev/null | sort -rnz | head -1 | cut -d' ' -f2- | tr -d '\0')
 if [ -z "$LATEST" ]; then
   echo "❌ 未找到评审报告"
   exit 3

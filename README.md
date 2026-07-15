@@ -69,6 +69,12 @@ package.json 中 react 依赖 → React
 miniprogram/ / weapp/ / uni-app/
 ```
 
+> **P6d 改进（v2）：** 集成验证不再由主 agent 口头 curl，而是通过 `check-integration.sh` 脚本自动启动服务、curl 各端点、验证 JSON 合法性、生成报告。主 agent 不可绕过此门禁自圆其说。
+
+> **P6c 改进（v2）：** 测试执行验证不再仅查文件存在，`check-test.sh` 现在实际运行 `pytest`/`mvn test`/`npm test`/`go test` 等框架并解析结果。
+
+> **P0 审计（v2）：** 新增 `check-audit.sh` 在每 Phase 开始/结束时快照文件状态，检测主 agent 是否有未经 subagent 授权的直接文件修改。违反零动手原则将触发自适应恢复。
+
 ---
 
 ## 快速安装
@@ -245,7 +251,7 @@ your-project/
     │   └── pipeline-orchestrator/
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
     ├── rules/          # AI 行为约束
-    └── scripts/        # 8 个验证脚本
+    └── scripts/        # 10 个验证脚本
 ```
 
 ---

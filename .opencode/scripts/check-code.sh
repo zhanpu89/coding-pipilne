@@ -102,6 +102,16 @@ elif [ -f "requirements.txt" ] || [ -f "setup.py" ] || [ -f "pyproject.toml" ]; 
       python3 -m py_compile "$pyf" 2>/dev/null || { SYNTAX_OK=false; ERRORS=$((ERRORS + 1)); echo "  ❌ 语法错误: $pyf"; }
     done
     $SYNTAX_OK && echo "  ✅ Python 语法检查通过"
+    # 类型检查（mypy / pyright）
+    if command -v mypy &>/dev/null; then
+      echo "  📋 mypy 类型检查..."
+      mypy "$SRC_DIR" 2>&1 | tail -10 && echo "  ✅ mypy 通过" || { echo "  ❌ mypy 类型检查失败"; ERRORS=$((ERRORS + 1)); }
+    elif command -v pyright &>/dev/null; then
+      echo "  📋 pyright 类型检查..."
+      pyright "$SRC_DIR" 2>&1 | tail -10 && echo "  ✅ pyright 通过" || { echo "  ❌ pyright 类型检查失败"; ERRORS=$((ERRORS + 1)); }
+    else
+      echo "  ℹ️  mypy/pyright 不可用，跳过类型检查"
+    fi
   elif command -v python &>/dev/null; then
     SYNTAX_OK=true
     for pyf in $PY_FILES; do
@@ -126,7 +136,7 @@ case "$PROJECT_TYPE" in
     done
     if [ -n "$ESLINT_CFG" ] && command -v npx &>/dev/null; then
       echo "  📋 检测到 ESLint 配置: $ESLINT_CFG"
-      npx eslint "$SRC_DIR" --max-warnings=50 2>&1 | tail -5 && echo "  ✅ ESLint 通过" || echo "  ⚠️ ESLint 发现问题（不影响门禁）"
+      npx eslint "$SRC_DIR" --max-warnings=10 2>&1 | tail -5 && echo "  ✅ ESLint 通过" || { echo "  ❌ ESLint 警告数超过 10"; ERRORS=$((ERRORS + 1)); }
     else
       echo "  ℹ️  未配置 ESLint，跳过 JS/TS lint"
     fi
@@ -147,6 +157,77 @@ case "$PROJECT_TYPE" in
     echo "  ℹ️  $PROJECT_TYPE 项目无内置 lint 配置，跳过"
     ;;
 esac
+
+# ---- 结构性内聚检查（防止打补丁式散落修改）----
+echo ""
+echo "结构性内聚检查:"
+
+if git rev-parse --git-dir &>/dev/null; then
+  # 有 Git：检查未提交的变更文件数
+  CHANGED_FILES=$(git diff --name-only --diff-filter=AM 2>/dev/null | grep -v "^.opencode/" | wc -l)
+  CHANGED_LIST=$(git diff --name-only --diff-filter=AM 2>/dev/null | grep -v "^.opencode/" || true)
+
+  # 也包含已 staged 的文件
+  STAGED_FILES=$(git diff --cached --name-only --diff-filter=AM 2>/dev/null | grep -v "^.opencode/" | wc -l)
+  CHANGED_FILES=$((CHANGED_FILES + STAGED_FILES))
+  if [ -n "$CHANGED_LIST" ]; then
+    STAGED_LIST=$(git diff --cached --name-only --diff-filter=AM 2>/dev/null | grep -v "^.opencode/" || true)
+    CHANGED_LIST=$(echo -e "$CHANGED_LIST\n$STAGED_LIST" | sort -u)
+  fi
+
+  echo "  修改文件数: $CHANGED_FILES"
+
+  # 简单修改却改了大量文件 -> 疑似散落（阈值 8）
+  if [ "$CHANGED_FILES" -gt 8 ]; then
+    echo "  ⚠️  修改文件过多（$CHANGED_FILES > 8），可能是打补丁式散落修改"
+    echo "  修改清单:"
+    echo "$CHANGED_LIST" | head -20
+    [ "$(echo "$CHANGED_LIST" | wc -l)" -gt 20 ] && echo "  ... (共 $CHANGED_FILES 个)"
+  else
+    echo "  ✅ 修改集中度正常"
+  fi
+
+  # 检测同一类/函数名是否在多个文件中出现（重复定义风险）
+  for pattern in "class " "def " "function " "interface "; do
+    DUP_COUNT=$(echo "$CHANGED_LIST" | grep -v "^.opencode/" | xargs -r grep -l "$pattern" 2>/dev/null | sort -u | wc -l)
+    if [ "$DUP_COUNT" -gt 1 ]; then
+      # 检查是否有同名定义
+      for search_word in $(echo "$CHANGED_LIST" | xargs -r grep -h "$pattern" 2>/dev/null | awk '{print $2}' | sort -u); do
+        OCCURRENCES=$(echo "$CHANGED_LIST" | xargs -r grep -l "${pattern}${search_word}" 2>/dev/null | wc -l)
+        if [ "$OCCURRENCES" -gt 1 ]; then
+          echo "  ⚠️  '${pattern}${search_word}' 在 $OCCURRENCES 个文件中出现，可能是重复定义"
+        fi
+      done
+    fi
+  done
+else
+  # 无 Git：仅统计源文件总数（信息性）
+  TOTAL=$(find "$SRC_DIR" -type f 2>/dev/null | wc -l)
+  echo "  ℹ️  无 Git 仓库，仅做文件计数: $TOTAL 个源文件（跳过变更检测）"
+fi
+
+# ---- 验证 SCOPE 声明文件真实存在 ----
+echo ""
+echo "SCOPE 文件真实性验证:"
+if [ -f "_MEMORY_CACHE.md" ]; then
+  SCOPE_FILES=$(grep -oP '>>SCOPE:\s*files?=\K[^#\n]+' _MEMORY_CACHE.md 2>/dev/null | tr ',' '\n' | xargs)
+  if [ -n "$SCOPE_FILES" ]; then
+    MISSING=0
+    for sf in $SCOPE_FILES; do
+      sf=$(echo "$sf" | xargs)
+      if [ -n "$sf" ] && [ ! -f "$sf" ]; then
+        echo "  ❌ SCOPE 声明的文件不存在: $sf"
+        MISSING=$((MISSING + 1))
+        ERRORS=$((ERRORS + 1))
+      fi
+    done
+    [ "$MISSING" -eq 0 ] && echo "  ✅ SCOPE 文件全部存在"
+  else
+    echo "  ℹ️  未检测到 SCOPE 文件声明"
+  fi
+else
+  echo "  ℹ️  无 _MEMORY_CACHE.md，跳过 SCOPE 验证"
+fi
 
 echo ""
 [ "$ERRORS" -eq 0 ] && echo "✅ 代码检查通过" || echo "⚠️ 代码检查完成，$ERRORS 个问题"

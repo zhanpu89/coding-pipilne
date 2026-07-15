@@ -8,6 +8,10 @@ SRC_DIR="src"
 ERRORS=0
 
 # 如果 P7 未执行（无 scope 或无漂移），直接通过
+SCOPE_MODULES=""
+if [ -f "_MEMORY_CACHE.md" ]; then
+  SCOPE_MODULES=$(grep -oP '>>SCOPE:\s*modules?=\K[^#\n]+' _MEMORY_CACHE.md 2>/dev/null | head -1)
+fi
 if [ -z "$SCOPE_MODULES" ] && [ ! -f "_MEMORY_CACHE.md" ]; then
   echo "ℹ️  P7 未触发，跳过漂移检查"
   exit 0

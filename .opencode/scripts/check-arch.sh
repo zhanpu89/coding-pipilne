@@ -23,10 +23,11 @@ else
   for f in "${SAD_FILES[@]}"; do
     SIZE=$(wc -c < "$f")
     echo "  $(basename "$f") ($SIZE bytes)"
-    [ "$SIZE" -lt 200 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
+    [ "$SIZE" -lt 1000 ] && echo "⚠️  文件过小(＜1KB)" && ERRORS=$((ERRORS + 1))
 
-    # 检查 NFR 量化（NFR 节应含具体数字指标）
-    NFR_Q=$(grep -cE "(并发|TPS|QPS|延迟|<[0-9]+ms|>[0-9]+%|[0-9]+核|[0-9]+GB|99[.%])" "$f" 2>/dev/null)
+    # 检查 NFR 量化（仅在 NFR 章节内匹配数字指标）
+    NFR_SECTION=$(awk '/^## .*(NFR|非功能性|性能|安全.*架构|可扩展性)/{found=1} found{print} /^## /{if(found && NR>1) exit}' "$f" 2>/dev/null)
+    NFR_Q=$(echo "$NFR_SECTION" | grep -cE "(并发|TPS|QPS|延迟|<[0-9]+ms|>[0-9]+%|[0-9]+核|[0-9]+GB|99[.%])" 2>/dev/null)
     if [ "$NFR_Q" -gt 0 ]; then
       echo "    → NFR 含 $NFR_Q 处量化指标 ✅"
     else

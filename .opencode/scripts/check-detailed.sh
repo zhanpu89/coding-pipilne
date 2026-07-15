@@ -23,7 +23,7 @@ else
   for f in "${DESIGN_FILES[@]}"; do
     SIZE=$(wc -c < "$f")
     echo "  $(basename "$f") ($SIZE bytes)"
-    [ "$SIZE" -lt 500 ] && echo "⚠️  文件过小" && ERRORS=$((ERRORS + 1))
+    [ "$SIZE" -lt 2000 ] && echo "⚠️  文件过小(＜2KB)" && ERRORS=$((ERRORS + 1))
 
     # 检查必含章节（仅匹配Markdown标题行，避免误匹配代码块/表格）
     for section in "功能描述" "业务规则" "OpenAPI\|接口" "DDL\|数据"; do
@@ -32,6 +32,26 @@ else
         ERRORS=$((ERRORS + 1))
       fi
     done
+
+    # 验证 OpenAPI 章节内有 ```yaml 或 ```json 代码块
+    if grep -Eq "^## .*(OpenAPI|接口)" "$f" 2>/dev/null; then
+      if grep -Eq '```(yaml|json)' "$f" 2>/dev/null; then
+        echo '    → OpenAPI 含代码块 ✅'
+      else
+        echo '    ⚠️  接口章节缺少 ```yaml/```json 代码块'
+        ERRORS=$((ERRORS + 1))
+      fi
+    fi
+
+    # 验证 DDL 章节内有 ```sql 代码块
+    if grep -Eq "^## .*(DDL|数据)" "$f" 2>/dev/null; then
+      if grep -q '```sql' "$f" 2>/dev/null; then
+        echo '    → DDL 含 SQL 代码块 ✅'
+      else
+        echo '    ⚠️  数据章节缺少 ```sql 代码块'
+        ERRORS=$((ERRORS + 1))
+      fi
+    fi
   done
 fi
 

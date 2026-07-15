@@ -23,8 +23,8 @@ fi
 
 for f in "${FILES[@]}"; do
   SIZE=$(wc -c < "$f")
-  if [ "$SIZE" -lt 100 ]; then
-    echo "⚠️ 文件过小(＜100B): $f"
+  if [ "$SIZE" -lt 1000 ]; then
+    echo "⚠️ 文件过小(＜1KB): $f"
     ERRORS=$((ERRORS + 1))
   else
     echo "✅ $(basename "$f") ($SIZE bytes)"
@@ -52,10 +52,13 @@ for f in "${FILES[@]}"; do
   fi
 
   # 检查技术术语侵入（PRD 不应含实现细节）
+  # 排除代码块（```内的技术术语不算侵入）、URL、注释中的引用
   TECH_PATTERNS="SELECT |INSERT |DELETE |CREATE TABLE|ALTER TABLE|\.py$|\.java$|npm |pip |maven|gradle"
-  TECH_HITS=$(grep -cE "$TECH_PATTERNS" "$f" 2>/dev/null || echo 0)
+  # 提取代码块外的行：用 awk 跟踪 in_code_block 状态
+  TECH_HITS=$(awk 'BEGIN{in_block=0; hits=0} /^```/{in_block=!in_block; next} !in_block && /'"$TECH_PATTERNS"'/{hits++} END{print hits}' "$f" 2>/dev/null || echo 0)
   if [ "$TECH_HITS" -gt 0 ]; then
-    echo "⚠️  $BASENAME 含 $TECH_HITS 处疑似技术术语（PRD 应避免实现细节）"
+    echo "❌  $BASENAME 含 $TECH_HITS 处技术术语（PRD 应避免实现细节，代码块内的不计）"
+    ERRORS=$((ERRORS + 1))
   fi
 done
 
