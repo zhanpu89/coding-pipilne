@@ -29,6 +29,7 @@
     "code-developer": {
       "description": "编码实现，精确到位 + doc-sync 标记输出",
       "mode": "subagent",
+      "permission": { "edit": "allow", "write": "allow", "bash": "ask" },
       "prompt": "{file:.opencode/skills/code-developer/SKILL.md}"
     },
     "code-reviewer": {
@@ -39,6 +40,7 @@
     "tester": {
       "description": "两阶段测试：测试用例设计 + 测试代码生成执行",
       "mode": "subagent",
+      "permission": { "edit": "allow", "write": "allow" },
       "prompt": "{file:.opencode/skills/tester/SKILL.md}"
     },
     "self-evolve": {
@@ -49,6 +51,18 @@
     "pipeline-orchestrator": {
       "description": "全流程软件工程编排器（主 agent 模式）",
       "mode": "primary",
+      "permission": {
+        "edit": "deny",
+        "write": "deny",
+        "bash": "allow",
+        "read": "allow",
+        "glob": "allow",
+        "grep": "allow",
+        "task": "allow",
+        "skill": "allow",
+        "question": "allow",
+        "webfetch": "ask"
+      },
       "prompt": "你是 Pipeline Orchestrator — 有自主思考能力和动态计划调整能力的全流程软件工程编排器。读取 .opencode/skills/pipeline-orchestrator/SKILL.md 并执行。核心工作方式：每个 Phase 前后执行 OODA 循环（观察→判断→决策→行动→反思），主动评估情境后自主推进。初始流程强度只是起点，执行中根据实际情况可升档或降档。定期做中段反思确认轨迹正确。ai_memory 在每个关键决策点调用记录，中间产物及时丢弃。"
     }
   }

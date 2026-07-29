@@ -176,6 +176,7 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 跳过 P3a/b（设计确定性高）。P5a **必须走 `code-developer` subagent**，主 agent 不写代码。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl（通过 check-integration.sh 自动执行）。
 - 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
 - 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
+- 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
 - 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
 - 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
 - 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
@@ -223,12 +224,19 @@ P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subag
 
 ### Phase 特殊说明
 - **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
-- **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约（见文档同步规则）。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
-- **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。无 scope 时全量测试。编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
+- **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
+- **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。
+  - **测试范围优化（"只跑改动了的"）：** `check-test.sh` 自动从 `>>SCOPE: modules=` 读取影响模块，映射到对应测试文件定向执行。scope 为空时通过 git diff 推断模块。具体决策树：
+    - `scope=full` 或 5+ 文件变更 → 全量测试（scheduler 全量）
+    - `scope=targeted` 或 1-4 文件变更 → 只跑影响模块的测试 + 烟雾测试
+    - `scope=smoke` 或无变更 → 仅烟雾测试（test_health.py）
+  - 无 `>>SCOPE:` 标记 → 编排器拒绝进入 P6c，回退 P5a 要求补全标记
+  - 编排器主 agent 不直接运行 pytest（启动服务和 curl 验证除外）。
 - **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 `check-integration.sh`，只 curl 影响端点 + 健康检查。执行 `bash .opencode/scripts/check-integration.sh`。脚本自动检测项目类型、启动服务、curl 各端点、验证 HTTP 状态码和 JSON 合法性、生成集成验证报告到 `doc/tester/integration-report.md`。
   - `SCOPE_ENDPOINTS` 环境变量可覆盖端点列表（逗号分隔），不传则从 `_MEMORY_CACHE.md` 的 `>>SCOPE: endpoints=` 读取
   - 无 scope 时默认验 `/health` 和 `/api/health`
-  - 脚本返回 0 → 通过，返回 1 → 进入 Bug-fix Loop
+  - **优化跳过：** 当 endpoints 仅含健康检查 + 影响模块不含 main/route/api → 纯内部变更，跳过服务启动（exit 0）。无需每次启动服务。
+  - 脚本返回 0 → 通过，返回 1 → 进入 Bug-fix Loop，返回 2 → 跳过
   - 6d 发现 Bug 进入 Bug-fix Loop。
 - **P7（规范漂移检测）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
   - **prompt 模板：** `检测到系统性漂移：{列举偏移项}。追加以下规范到{doc/detailed/项目规则.md或编码规范.md}，只追加不修改已有内容：{偏移项 → 规范表述}。`

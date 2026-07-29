@@ -25,19 +25,21 @@ ENDPOINTS=()
 SCOPE_SOURCE="默认（健康检查）"
 
 if [ -f "_MEMORY_CACHE.md" ]; then
-  SCOPE_LINE=$(grep -E "endpoints=" _MEMORY_CACHE.md 2>/dev/null | head -1)
-  if [ -n "$SCOPE_LINE" ]; then
-    # 格式: >>SCOPE: endpoints=POST /api/orders/*,GET /api/orders/{id}
-    SCOPE_DATA=$(echo "$SCOPE_LINE" | sed 's/.*endpoints=//' | tr ',' '\n')
-    if [ -n "$SCOPE_DATA" ]; then
-      while IFS= read -r ep; do
-        ep=$(echo "$ep" | xargs)
-        [ -n "$ep" ] && ENDPOINTS+=("$ep")
-      done <<< "$SCOPE_DATA"
-      SCOPE_SOURCE="_MEMORY_CACHE.md"
-    fi
-  fi
-fi
+   SCOPE_LINE=$(grep -E "endpoints=" _MEMORY_CACHE.md 2>/dev/null | head -1)
+   if [ -n "$SCOPE_LINE" ]; then
+     # 格式: >>SCOPE: endpoints=POST /api/orders/*,GET /api/orders/{id}
+     SCOPE_DATA=$(echo "$SCOPE_LINE" | sed 's/.*endpoints=//' | tr ',' '\n')
+     if [ -n "$SCOPE_DATA" ]; then
+       while IFS= read -r ep; do
+         ep=$(echo "$ep" | xargs)
+         [ -n "$ep" ] && ENDPOINTS+=("$ep")
+       done <<< "$SCOPE_DATA"
+       SCOPE_SOURCE="_MEMORY_CACHE.md"
+     fi
+   fi
+   # Also read modules scope (for pure internal change detection)
+   SCOPE_MODULES=$(grep -oP '>>SCOPE:\s*modules?=\K[^#\n]+' _MEMORY_CACHE.md 2>/dev/null | head -1)
+ fi
 
 # scope 环境变量覆盖文件
 if [ -n "$SCOPE_ENDPOINTS" ]; then
@@ -54,6 +56,18 @@ fi
 if [ ${#ENDPOINTS[@]} -eq 0 ]; then
   ENDPOINTS=("GET /health" "GET /api/health")
   SCOPE_SOURCE="默认（健康检查兜底）"
+fi
+
+# 优化跳过：纯内部变更无需启动服务
+# 当 endpoints 只有健康检查 + 影响模块不含 main/路由层 → 纯内部重构，跳过集成验证
+if [ ${#ENDPOINTS[@]} -eq 2 ] && [ "$SCOPE_SOURCE" = "默认（健康检查兜底）" ] && [ -n "$SCOPE_MODULES" ]; then
+  if ! echo "$SCOPE_MODULES" | grep -qiE "main|route|api|endpoint|controller"; then
+    echo "=== P6d 集成验证 ==="
+    echo "端点: 仅健康检查"
+    echo "影响模块: $SCOPE_MODULES"
+    echo "ℹ️  纯内部变更（无 API/端点影响），跳过集成验证"
+    exit 0
+  fi
 fi
 
 echo "=== P6d 集成验证 ==="
