@@ -66,7 +66,7 @@ if [ ${#ENDPOINTS[@]} -eq 2 ] && [ "$SCOPE_SOURCE" = "默认（健康检查兜�
     echo "端点: 仅健康检查"
     echo "影响模块: $SCOPE_MODULES"
     echo "ℹ️  纯内部变更（无 API/端点影响），跳过集成验证"
-    exit 0
+    exit 2
   fi
 fi
 

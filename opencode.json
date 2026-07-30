@@ -3,38 +3,56 @@
   "default_agent": "pipeline-orchestrator",
   "instructions": [
     ".opencode/rules/precise-location.md",
-    ".opencode/rules/endpoint-lock.md"
+    ".opencode/rules/endpoint-lock.md",
+    ".opencode/rules/json-write-safety.md",
+    ".opencode/rules/code-discipline.md",
+    ".opencode/rules/doc-alignment.md"
   ],
   "agent": {
     "prd-writer": {
       "description": "需求分析与 PRD 文档撰写",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/prd-writer/SKILL.md}"
     },
     "review-expert": {
       "description": "全流程评审专家，对文档进行结构化评审",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/review-expert/SKILL.md}"
     },
     "system-architect": {
       "description": "系统架构设计，将 PRD 转化为架构建档",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/system-architect/SKILL.md}"
     },
     "task-decomposer": {
       "description": "软件模块详细设计，将 SAD 拆解为模块级详设",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/task-decomposer/SKILL.md}"
     },
     "code-developer": {
       "description": "编码实现，精确到位 + doc-sync 标记输出",
       "mode": "subagent",
-      "permission": { "edit": "allow", "write": "allow", "bash": "ask" },
+      "permission": { "edit": "allow", "write": "allow", "bash": "allow" },
       "prompt": "{file:.opencode/skills/code-developer/SKILL.md}"
     },
     "code-reviewer": {
       "description": "代码质量门禁，评审代码并输出结构化报告",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/code-reviewer/SKILL.md}"
     },
     "tester": {
@@ -46,6 +64,9 @@
     "self-evolve": {
       "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
       "mode": "subagent",
+      "permission": {
+        "edit": { "*": "allow", "src/**": "deny" }
+      },
       "prompt": "{file:.opencode/skills/self-evolve/SKILL.md}"
     },
     "pipeline-orchestrator": {

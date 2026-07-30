@@ -6,10 +6,11 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 
 | File | 绑定 | 说明 |
 |------|------|------|
-| `precise-location.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，Step 0 定位用 |
-| `endpoint-lock.md` | **code-developer + 编排器** | 嵌入 code-developer SKILL.md + 编排器 `instructions` |
-| `code-discipline.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，编码纪律 |
-| `doc-alignment.md` | **code-developer** | 嵌入 SKILL.md 加载的规则，契约对齐 |
+| `precise-location.md` | **code-developer + orchestrator** | 全局 `instructions` 加载；code-developer SKILL.md 中也有文本引用，Step 0 定位用 |
+| `endpoint-lock.md` | **code-developer + orchestrator** | 全局 `instructions` 加载，端锁定规则；编排器走对齐流程时通知用户 |
+| `code-discipline.md` | **code-developer + tester** | 全局 `instructions` 加载，编码纪律 |
+| `doc-alignment.md` | **code-developer + code-reviewer** | 全局 `instructions` 加载，>DOC_SYNC 契约对齐 |
+| `json-write-safety.md` | **所有写文件 agent** | 全局 `instructions` 加载 + SKILL.md 中按需引用；写入容错 |
 
 ## Scripts（`.opencode/scripts/`）
 

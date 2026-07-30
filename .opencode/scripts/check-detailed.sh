@@ -35,7 +35,8 @@ else
 
     # 验证 OpenAPI 章节内有 ```yaml 或 ```json 代码块
     if grep -Eq "^## .*(OpenAPI|接口)" "$f" 2>/dev/null; then
-      if grep -Eq '```(yaml|json)' "$f" 2>/dev/null; then
+      SECTION_CONTENT=$(awk '/^## /{if(f) exit; if(/OpenAPI|接口/) f=1; next} f' "$f")
+      if echo "$SECTION_CONTENT" | grep -Eq '```(yaml|json)' 2>/dev/null; then
         echo '    → OpenAPI 含代码块 ✅'
       else
         echo '    ⚠️  接口章节缺少 ```yaml/```json 代码块'
@@ -45,7 +46,8 @@ else
 
     # 验证 DDL 章节内有 ```sql 代码块
     if grep -Eq "^## .*(DDL|数据)" "$f" 2>/dev/null; then
-      if grep -q '```sql' "$f" 2>/dev/null; then
+      SECTION_CONTENT=$(awk '/^## /{if(f) exit; if(/DDL|数据/) f=1; next} f' "$f")
+      if echo "$SECTION_CONTENT" | grep -q '```sql' 2>/dev/null; then
         echo '    → DDL 含 SQL 代码块 ✅'
       else
         echo '    ⚠️  数据章节缺少 ```sql 代码块'
