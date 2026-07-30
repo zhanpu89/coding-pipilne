@@ -1,20 +1,20 @@
 #!/usr/bin/env bash
 # 检查评审报告结论
-# 返回: 0=通过(✅), 1=有条件通过(⚠️), 2=不通过(❌), 3=未找到
+# 标准退出码：0=通过(✅)，1=有条件(⚠️)，2=阻断(❌)
 # 输出: 结论文本
 
 REVIEW_DIR="doc/review"
 
 if [ ! -d "$REVIEW_DIR" ]; then
   echo "❌ 评审目录不存在"
-  exit 3
+  exit 2
 fi
 
 # 找最新的评审报告（支持多种命名模式）
 LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -printf '%T@ %p\0' 2>/dev/null | sort -rnz | head -1 | cut -d' ' -f2- | tr -d '\0')
 if [ -z "$LATEST" ]; then
   echo "❌ 未找到评审报告"
-  exit 3
+  exit 2
 fi
 
 echo "报告: $(basename "$LATEST")"
@@ -43,7 +43,7 @@ fi
 
 if [ -z "$LINE" ]; then
   echo "❌ 未找到评审结论行（支持表格/强调/纯文本/emoji 格式）"
-  exit 3
+  exit 2
 fi
 
 echo "原始行: $LINE"

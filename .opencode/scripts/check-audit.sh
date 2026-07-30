@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 编排审计 — 检测主 agent 是否有未经 subagent 授权的直接文件修改
-# 返回: 0=通过, 1=审计异常
+# 退出码: 0=通过, 1=审计异常
 #
 # 使用方式:
 #   快照:   bash check-audit.sh snapshot [phase_name]
@@ -12,10 +12,10 @@ PHASE="${2:-unknown}"
 AUDIT_DIR="/tmp/opencode/audit"
 AUDIT_FILE="$AUDIT_DIR/snapshot.json"
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
-MONITOR_DIRS=("src" "doc" "frontend" "api" "server" "app")
+MONITOR_DIRS=("src" "doc" "frontend" "api" "server" "app" "tests" ".opencode")
 
-# 门禁脚本目录 — 这些目录的修改不算违规
-SELF_DIRS=(".opencode/scripts" ".opencode/rules" ".opencode/skills/pipeline-orchestrator")
+# 门禁脚本目录 / 工具基础设施 — 这些目录的修改不算违规（由 self-evolve 等 subagent 授权修改）
+SELF_DIRS=(".opencode/scripts" ".opencode/rules" ".opencode/skills" "opencode.json" "AGENTS.md")
 
 mkdir -p "$AUDIT_DIR"
 
@@ -23,7 +23,8 @@ mkdir -p "$AUDIT_DIR"
 is_self_modification() {
   local path="$1"
   for sd in "${SELF_DIRS[@]}"; do
-    if echo "$path" | grep -q "^$sd/"; then
+    # 匹配目录条目 (dir/) 或单个文件条目 (opencode.json, AGENTS.md)
+    if echo "$path" | grep -qE "^$sd(/|$)" 2>/dev/null; then
       return 0
     fi
   done
@@ -47,8 +48,8 @@ snapshot() {
 
       MTIME=$(stat -c '%Y' "$f" 2>/dev/null || echo 0)
       SIZE=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
-      # 计算内容指纹（前 1000 字节的 md5，避免大文件影响性能）
-      FINGERPRINT=$(head -c 1000 "$f" 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1 || echo "0")
+      # 计算内容指纹（完整文件 md5，确保尾部修改也能检出）
+      FINGERPRINT=$(md5sum "$f" 2>/dev/null | cut -d' ' -f1 || echo "0")
 
       # JSON 安全转义路径
       SAFE_PATH=$(echo "$f" | sed 's/"/\\"/g')
@@ -86,7 +87,7 @@ verify() {
     # 从快照中查找此文件
     MTIME=$(stat -c '%Y' "$f" 2>/dev/null || echo 0)
     SIZE=$(stat -c '%s' "$f" 2>/dev/null || echo 0)
-    FINGERPRINT=$(head -c 1000 "$f" 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1 || echo "0")
+    FINGERPRINT=$(md5sum "$f" 2>/dev/null | cut -d' ' -f1 || echo "0")
 
     # JSON 转义路径用于 grep
     ESCAPED_PATH=$(echo "$REL_PATH" | sed 's/"/\\"/g')

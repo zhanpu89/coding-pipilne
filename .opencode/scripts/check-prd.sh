@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 检查 PRD 产出物
-# 返回: 0=通过, 1=失败
+# 退出码: 0=通过, 1=失败
 
 PRD_DIR="doc/prd"
 ERRORS=0

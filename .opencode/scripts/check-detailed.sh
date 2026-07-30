@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 检查详细设计产出物
-# 返回: 0=通过, 1=失败
+# 退出码: 0=通过, 1=失败
 
 DETAILED_DIR="doc/detailed"
 ERRORS=0

@@ -1,10 +1,9 @@
 #!/usr/bin/env bash
 # P5a 架构合规门禁 — 验证代码实现遵循系统架构约束
-# 读取 tech-stack.json 的 architectureRules，逐条扫描 src/ 进行验证
-# 返回: 0=通过, 1=失败, 2=无规则跳过
+# 退出码: 0=通过/无可检规则, 1=违规, 2=阻断（配置错误/解析失败）
 #
-# 使用方式（由编排器在 P5a 或 P5b 阶段调用）：
-#   bash .opencode/scripts/check-arch-compliance.sh
+# 注意：无 architectureRules 时视为"无可检规则"返回 0，
+# 不返回 2，以免与编排器的"阻断"语义冲突。
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 TS_FILE="$PROJECT_DIR/doc/arch/tech-stack.json"
@@ -13,7 +12,7 @@ ERRORS=0
 
 if [ ! -f "$TS_FILE" ]; then
   echo "ℹ️  tech-stack.json 不存在，跳过架构合规检查"
-  exit 2
+  exit 0
 fi
 
 # ---- 用 Python 解析 architectureRules 并输出 JSON 结果 ----
@@ -30,7 +29,7 @@ print(json.dumps(ar))
 
 if [ "$RULES" = "SKIP" ] || [ -z "$RULES" ]; then
   echo "ℹ️  architectureRules 未定义（可在 tech-stack.json 中按需启用），跳过架构合规检查"
-  exit 2
+  exit 0
 fi
 
 echo "=== 架构合规检查 ==="
@@ -47,7 +46,7 @@ if [ "$(echo "$LAYER_RULES" | python3 -c "import json,sys; print(len(json.load(s
   echo "--- 层隔离检查 ---"
   
   # 解析层隔离规则并用 find + grep 逐条检查
-  echo "$LAYER_RULES" | python3 -c "
+  LAYER_RESULTS=$(echo "$LAYER_RULES" | python3 -c "
 import json, sys, os, fnmatch, re
 
 rules = json.load(sys.stdin)
@@ -105,7 +104,9 @@ if violations:
         print(f'{fp} - {imp} ({reason})')
 else:
     print('OK')
-" 2>/dev/null | while IFS= read -r line; do
+" 2>/dev/null)
+
+  while IFS= read -r line; do
     if [ "$line" = "VIOLATIONS" ]; then
       continue
     elif [ "$line" = "OK" ]; then
@@ -114,7 +115,7 @@ else:
       echo "  ⚠️  $line"
       ERRORS=$((ERRORS + 1))
     fi
-  done
+  done <<< "$LAYER_RESULTS"
 fi
 
 # ---- 2. Import Restrictions ----

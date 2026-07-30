@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 检查测试用例设计产出物（阶段一）
-# 返回: 0=通过, 1=失败
+# 退出码: 0=通过, 1=失败
 
 TESTER_DIR="doc/tester"
 ERRORS=0

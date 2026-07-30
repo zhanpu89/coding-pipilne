@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # 记录 task() subagent 调用日志（供 self-evolve 分析）
 # 用法: log-skill.sh <skill_id> <task描述> [ok|fail]
+# 退出码: 0=写入成功, 1=写入失败
 # 写入 ~/.opencode/history/{skill}.jsonl（用户级目录，不随项目清理）
 
 SKILL="$1"

@@ -43,6 +43,12 @@ description: |
 
 **Step 2：** 加载 `resources/lang-test-patterns.md`（按 LC-001）。以用例文档为唯一依据生成测试代码。
 
+**自动补用例（P6c 前无 P6a 时自动触发）：** 扫描 `doc/tester/` 下是否有 `{模块名}_测试用例.md`。不存在时：
+- 从 `doc/detailed/` 详设提取 BR/OpenAPI/伪代码/测试要点
+- 按阶段一 Step 1 映射表生成最小用例集（正反各 1 + 边界 1）
+- 写入 `doc/tester/{模块名}_测试用例_auto.md`，标记 `🟡 自动生成`
+- 基于自动生成的用例继续执行
+
 **Step 2.5（定向执行）：** 编排器在 prompt 中传入 `>>SCOPE: modules=X,Y`。收到时：
 
 - 按模块跑测试：`pytest tests/test_X*.py tests/test_Y*.py`（或对应语言等价命令）
@@ -53,6 +59,13 @@ description: |
 **Step 3：** 执行（Java=mvnw, Python=pytest, Go=go test, Node=jest）。无代码则静态分析标 SKIP。
 
 **Step 3.5：** 缺陷 `BUG-{模块}-{序号}` + 严重程度 P0-P3。P0 立即暂停。
+
+**Step 3.6（测试数据策略）：** 测试数据不是随便填的。每个用例的前置条件需要明确的测试数据：
+- 单元测试：用 fixture/factory 创建隔离数据，测试完成后清理
+- 集成测试：使用独立测试数据库，每轮测试前重建基线数据
+- 共用数据时标记为共享 fixture，互不干扰的测试可并行
+
+**Step 3.7（Flaky 处理）：** 测试失败时重试 1 次确认是否 Flaky。连续 2 次失败的才报告为 BUG。在报告中标明 Flaky 次数 > 1 的用例。
 
 **Step 4：** 加载 `templates/report-template.md`。输出 `doc/tester/{模块名}_测试报告{_RN}.md`。
 结论：✅ PASS≥90% | ⚠️ PASS≥80% | ❌ 有P0或PASS<80%

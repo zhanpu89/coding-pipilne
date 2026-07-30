@@ -1,15 +1,31 @@
 #!/usr/bin/env bash
-# 检查 P7 规范漂移检测产出物
-# 验证 task-decomposer 同步后的契约文档与代码一致
-# 检测代码实现与架构约束之间的系统偏差
-# 返回: 0=通过, 1=失败
+# 检查 P7 全局漂移检测产出物
+# P7a: 验证 code-reviewer 漂移报告已生成
+# P7b: 验证 doc agent 已同步契约文档
+# 退出码: 0=无漂移/已修复, 1=漂移存在或报告缺失
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 DETAILED_DIR="doc/detailed"
 SRC_DIR="$PROJECT_DIR/src"
 ERRORS=0
 
-echo "=== P7 规范漂移检测 ==="
+echo "=== P7 全局漂移检测 ==="
+
+# ---- 0. 漂移报告检查（P7a 产出物） ----
+echo ""
+echo "--- 漂移报告 ---"
+DRIFT_REPORT="$PROJECT_DIR/doc/tester/drift-report.md"
+if [ -f "$DRIFT_REPORT" ]; then
+  if grep -q "✅ 无漂移" "$DRIFT_REPORT" 2>/dev/null; then
+    echo "  ✅ 漂移报告确认：无漂移"
+  else
+    DRIFT_COUNT=$(grep -c "漂移\|不匹配\|缺失" "$DRIFT_REPORT" 2>/dev/null || echo 0)
+    echo "  ⚠️  漂移报告存在，发现 $DRIFT_COUNT 处漂移"
+    ERRORS=$((ERRORS + DRIFT_COUNT))
+  fi
+else
+  echo "  ℹ️  无漂移报告（跳过 P7a 验证）"
+fi
 
 # ---- 1. 架构漂移检测 ----
 # 对比 tech-stack.json 中的 architectureRules 与当前代码实现
@@ -66,14 +82,14 @@ for req in "项目规则.md" "编码规范.md"; do
   fi
 done
 
-# ---- 3. P7 进化记录检查 ----
+# ---- 3. P7b 契约同步进化记录检查 ----
 if [ -f "$PROJECT_DIR/$DETAILED_DIR/项目规则.md" ]; then
-  P7_COUNT=$(grep -c "P7-.*自动进化" "$PROJECT_DIR/$DETAILED_DIR/项目规则.md" 2>/dev/null || echo 0)
-  [ "$P7_COUNT" -gt 0 ] && echo "  ✅ 项目规则.md 记录了 $P7_COUNT 次 P7 进化"
+  P7_COUNT=$(grep -c "P7-.*同步" "$PROJECT_DIR/$DETAILED_DIR/项目规则.md" 2>/dev/null || echo 0)
+  [ "$P7_COUNT" -gt 0 ] && echo "  ✅ 项目规则.md 记录了 $P7_COUNT 次 P7 同步"
 fi
 if [ -f "$PROJECT_DIR/$DETAILED_DIR/编码规范.md" ]; then
-  P7_COUNT=$(grep -c "P7-.*自动进化" "$PROJECT_DIR/$DETAILED_DIR/编码规范.md" 2>/dev/null || echo 0)
-  [ "$P7_COUNT" -gt 0 ] && echo "  ✅ 编码规范.md 记录了 $P7_COUNT 次 P7 进化"
+  P7_COUNT=$(grep -c "P7-.*同步" "$PROJECT_DIR/$DETAILED_DIR/编码规范.md" 2>/dev/null || echo 0)
+  [ "$P7_COUNT" -gt 0 ] && echo "  ✅ 编码规范.md 记录了 $P7_COUNT 次 P7 同步"
 fi
 
 # ---- 汇总 ----

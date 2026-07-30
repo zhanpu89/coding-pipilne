@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # P6d 集成验证门禁 — 启动服务 + curl 端点验证
-# 返回: 0=通过, 1=失败, 2=跳过
+# 退出码: 0=通过, 1=警告, 2=阻断/跳过
 #
 # 使用方式（由编排器在 P6d 阶段调用）：
 #   bash .opencode/scripts/check-integration.sh

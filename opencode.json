@@ -98,8 +98,8 @@
       "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
       "mode": "subagent",
       "permission": {
-        "edit": { "*": "deny", ".opencode/**": "allow" },
-        "write": { "*": "deny", ".opencode/**": "allow" },
+        "edit": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow" },
+        "write": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow" },
         "bash": "allow"
       },
       "prompt": "{file:.opencode/skills/self-evolve/SKILL.md}"

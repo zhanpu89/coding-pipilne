@@ -17,13 +17,17 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | 脚本 | 绑定 Phase | 说明 |
 |------|:----------:|------|
 | `check-arch.sh` | 2a | 架构产出：SAD 文件存在性 + tech-stack.json 校验 + NFR 量化检测 |
-| `check-prd.sh` | 1b | PRD 产出：文件大小 + 必备章节 + 技术术语检测 |
+| `check-arch-compliance.sh` | 5a | 架构合规：层隔离 + 导入限制 + 命名规范 |
+| `check-audit.sh` | 全部 | Phase 感知文件变更审计：快照/验证/清理 |
+| `check-code.sh` | 5a | 代码产出：文件统计 + 编译/类型检查 + 空文件检测 + Lint |
 | `check-detailed.sh` | 3a | 详设产出：文件大小 + 必备章节（^## 标题锚定）+ 规则文件检测 |
-| `check-code.sh` | 5a | 代码产出：文件统计 + 编译/类型检查 + 空文件检测 + Lint（ESLint/Ruff） |
-| `check-review.sh` | 1c/2b/3b/5b/6b | 评审结论提取：支持表格/强调/纯文本/emoji 四种格式 |
-| `check-testcase.sh` | 6a | 测试用例：文件存在性 + TC-ID 格式验证 + 类型分布统计 |
-| `check-test.sh` | 6c | 测试执行：文件存在性 + 断言计数 + 报告结论检测 |
 | `check-drift.sh` | P7 | 规范漂移检测：规则文件 + P7 进化记录 + Scope 跟踪 |
+| `check-integration.sh` | 6d | 集成验证：curl 端到端 + 稳定性检查 |
+| `check-opencode.sh` | P5a/自举 | Pipeline 工具自验证：bash语法 + JSON格式 + SKILL结构 |
+| `check-prd.sh` | 1b | PRD 产出：文件大小 + 必备章节 + 技术术语检测 |
+| `check-review.sh` | 1c/2b/3b/5b/6b | 评审结论提取：支持表格/强调/纯文本/emoji 四种格式 |
+| `check-test.sh` | 6c | 测试执行：文件存在性 + 断言计数 + 报告结论检测 |
+| `check-testcase.sh` | 6a | 测试用例：文件存在性 + TC-ID 格式验证 + 类型分布统计 |
 | `log-skill.sh` | 全部 | Subagent 调用日志（JSON-Lines，ISO 时间戳） |
 
 ## Conventions
