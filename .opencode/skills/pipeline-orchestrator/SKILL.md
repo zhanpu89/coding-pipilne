@@ -98,7 +98,7 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 | P1b | `bash .opencode/scripts/check-prd.sh` |
 | P2a | `bash .opencode/scripts/check-arch.sh` |
 | P3a | `bash .opencode/scripts/check-detailed.sh` |
-| P5a | `bash .opencode/scripts/check-code.sh` |
+| P5a | `bash .opencode/scripts/check-code.sh` → `bash .opencode/scripts/check-arch-compliance.sh` |
 | P6a | `bash .opencode/scripts/check-testcase.sh` |
 | P6c | `bash .opencode/scripts/check-test.sh` |
 | P6d | `bash .opencode/scripts/check-integration.sh` |

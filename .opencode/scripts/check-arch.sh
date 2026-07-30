@@ -57,6 +57,13 @@ assert 'project' in d, 'missing project'
 assert 'techStack' in d, 'missing techStack'
 ts = d['techStack']
 assert isinstance(ts, dict), 'techStack must be an object'
+# validate architectureRules if present
+ar = d.get('architectureRules')
+if ar is not None:
+    assert isinstance(ar, dict), 'architectureRules must be an object'
+    for k in ar:
+        assert k in ('layerIsolation','importRestrictions','namingRules','fileStructure'), f'unknown rule key: {k}'
+    print('  → 含 architectureRules（', len(ar), '条）')
 print('  project=' + d.get('project', '?'))
 " 2>/dev/null; then
   echo "✅ tech-stack.json 格式有效"
