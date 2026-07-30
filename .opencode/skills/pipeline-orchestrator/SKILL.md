@@ -1,323 +1,120 @@
 ---
 name: pipeline-orchestrator
-description: 全流程软件工程编排器。五级强度自适配：🐛轻量/🟢-light/🟢标准/🟡增量/🔴全量。OODA 心智模型驱动。不适：单一技能/纯问答
+description: 全流程软件工程编排器。五级强度自适配：🐛轻量/🟢-light/🟢标准/🟡增量/🔴全量。不适：单一技能/纯问答
 ---
 
-# 核心心智：管道调度
+# 职责
 
-你是总指挥编排者，不是工程师。**你的工作只有三件：选对 subagent、给对指令、验结果。**
+你只做三件事：
 
-1. **选人** — 当前 Phase 该调哪个 subagent？（见 Phase 执行表）
-2. **给指令** — 读 `_MEMORY_CACHE.md` 提取最少上下文，构造 subagent prompt
-3. **验结果** — subagent 产出是否通过门禁？不通过走自适应恢复
+## 1. 分析输入
 
-> **P6d（验收环节）：** 启动服务、curl 验证属于编排器本职验收，主 agent 直接执行。其余文件修改走 subagent（由 edit:deny 强制约束）。
+用户请求来了，先扫描项目确定范围：
 
-# 入口守卫（每次收到用户请求时执行）
+- **技术栈扫描：** `pom.xml`/`build.gradle` → Java；`go.mod` → Go；`Cargo.toml` → Rust；`pyproject.toml`/`requirements.txt` → Python；`package.json+server/` → Node；`vue`/`react` → 前端框架
+- **影响域层级：** 视图层 → API/数据层 → 后端路由/控制器 → 后端业务/数据层 → DDL/数据模型 → 跨模块
+- **症状→根因推断（前端症状不锁定前端，先排除后端）：** 涉及创建/保存/删除/搜索的数据操作 → 先 API 直达测试排除后端再定论
+- **强度匹配：** 按范围选强度，整体序列写入 `_MEMORY_CACHE.md`
 
-**收到用户请求后，按以下顺序执行，不分析、不回答、不写业务代码：**
-
-```
-Step 0: 影响域分析与强度匹配 → 确定流程强度（见下节）
-Step 1: 写 _MEMORY_CACHE.md（记录 Phase 计划 + 强度 + 请求摘要）
-Step 2: 按 Phase 计划执行第一个 Phase（dispatch subagent 或 precise-location）
-```
-
-**流程强度决定：** 先用"影响域分析与强度匹配"节的技术栈扫描 + 影响域层级确定强度（🐛/🟢-light/🟢/🟡/🔴）。
-确认是否有 DDL？是否有新增 API？是否跨模块？是全新项目还是单文件改动？
-然后从下表选取对应 Phase 序列写入 _MEMORY_CACHE.md。
-
-**Phase 序列选择表（确定后整个序列写入 _MEMORY_CACHE.md，不是只写第一个 Phase）：**
-
-| 条件 | 强度 | Phase 序列 |
-|------|------|-----------|
-| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位(precise-location) → **P5a** → **P5b** → P6d |
-| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7 |
+| 影响范围 | 强度 | Phase 序列 |
+|----------|------|-----------|
+| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位 → **P5a** → **P5b** → P6d |
+| 同模块前后端，无 DDL，无新增 API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7 |
 | 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b** → **P6c** → P6d → P7 |
 | 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7 |
 | 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7 |
 | 纯信息查询 | — | 直接回答，不触发 pipeline |
 
-> **粗体 = subagent 执行，普通 = 主 agent 执行。**
+> **粗体 = subagent 执行，普通 = 主 agent 执行**（主 agent 不直接修改文件，由 `edit:deny` 强制执行。P6d curl 验证属验收环节，主 agent 直接执行。）
 
-**硬性规则：**
-- 🔴 **主 agent 零动手：** 除非 Phase 表标注"主 agent"（仅 P6d），否则必须 dispatch subagent。（`edit:deny` 强制执行）
-- 🐛 **Bug 修复必须先定位再修：** Step 0 强度=🐛 时，先执行 `precise-location.md` 定位，定位完成后再 dispatch code-developer。
-- 📝 **每 Phase 前先写 `_MEMORY_CACHE.md` 再 dispatch**。
-- ❓ 不确定时宁高勿低：先写 `_MEMORY_CACHE.md` 再 `task(explore)` 探针。
+## 2. 按照分析编排任务
 
-`_MEMORY_CACHE.md` 最少格式（入口守卫用，后续主循环补充）：
-```
-【当前 Phase 上下文】Phase: 5a (of 🟢-light) | 请求: {请求摘要} | 序列: P5a→P5b→P6c→P6d→P7
-【前序产出】(无)
-```
-
-**每 Phase 开始前主动裁剪上下文：** 确认当前窗口只保留 `_MEMORY_CACHE.md` + 本 Phase 指令。
-上一个 Phase 的所有推理视为已归档，不带到下一 Phase。
-
-发现计划不合理 → 在 `_MEMORY_CACHE.md` 中更新 Phase 序列再继续。
-**不需要模板，不需要格式化输出。你的输出是 _MEMORY_CACHE.md + subagent 调用 + 门禁结果。**
-
-# 执行流水线
-
-**主循环（每条严格按序执行，缺一不可）：**
+按 Phase 序列逐个 dispatch subagent，每 Phase 只做三小步：
 
 ```
-步骤 1: 裁剪上下文 — 仅留 _MEMORY_CACHE.md（声明"Phase N 开始，前序推理已归档"）
-步骤 2: OODA 前置 — 观察当前 Phase 产出目标 → 判断用什么 subagent/prompt
-步骤 3: 🔍 审计快照 — `bash .opencode/scripts/check-audit.sh snapshot {Phase}`（记录当前文件状态，供下阶段审计用）
-步骤 4: dispatch task(subagent_type)，入参只含最少必要上下文
-步骤 5: 🚪 门禁 — task() 返回后**立即执行对应门禁脚本**：
-
-        从_Phase 执行表_取当前 Phase 的门禁脚本路径，
-        用 bash 执行：`bash .opencode/scripts/{check-xxx.sh}`
-        ✅ 返回 0 → 门禁通过，继续
-        ❌ 返回非 0 → 查看错误原因 → 走"自适应恢复"
-
-步骤 6: 🔍 审计验证 — `bash .opencode/scripts/check-audit.sh verify {Phase}`
-        ⚠️ 审计发现未经 subagent 授权的文件修改 → 标记违规，走自适应恢复
-步骤 7: 🤖 ai_memory_memory_add_decision() + update_summary() — 持久化关键决策
-步骤 8: OODA 后置 — 归档本 Phase 推理，重写 _MEMORY_CACHE.md（仅保留下一 Phase 需要的最少上下文）
-步骤 9: 进入下一 Phase（回到步骤 1）
+① 裁剪上下文 — 只留 _MEMORY_CACHE.md + 本 Phase 指令
+② dispatch task(subagent_type) — 入参只含最少上下文
+③ 记录决策 — ai_memory_memory_add_decision() + update_summary()
 ```
 
-> 🚪 **门禁为强制步骤。** 每 Phase 的 OODA 后置中必须包含门禁结果。
-> 🔍 **审计快照在每 Phase 开始时拍摄、结束时校验。** 若发现文件在 subagent 调用范围外被修改，走自适应恢复。
+**dispatch 对照表：**
 
-**变更范围驱动：** P5a(code-developer) 返回后提取 `>>SCOPE:` 标记，写入 _MEMORY_CACHE.md：
+| Phase | agent | 产出 |
+|-------|-------|------|
+| 1a PRD 产出 | `prd-writer` | `doc/prd/*.md` |
+| 1b PRD 评审 | `review-expert` | 评审报告 |
+| 2a 架构产出 | `system-architect` | `doc/arch/SAD.md` + `tech-stack.json` |
+| 2b 架构评审 | `review-expert` | 评审报告 |
+| 3a 详设产出 | `task-decomposer` | `doc/detailed/*.md` + 项目规则/编码规范 |
+| 3b 详设评审 | `review-expert` | 评审报告 |
+| 5a 编码产出 | `code-developer` | `src/` 代码变更 |
+| 5b 代码评审 | `code-reviewer` | 评审报告 |
+| 6a 测试用例产出 | `tester(阶段一)` | `doc/tester/*.md` |
+| 6b 用例评审 | `review-expert` | 评审报告 |
+| 6c 测试执行 | `tester(阶段二)` | 测试结果报告 |
+| 6d 集成验证 | **主 agent** | `doc/tester/integration-report.md` |
+| P7 规范漂移检测 | `task-decomposer`（有漂移时） | 规范更新 |
+
+**评审隔离：** 每个产出 Phase 后紧跟对应评审 Phase。评审用**全新 subagent**，入参只含被评文件 + 参考契约，不携带创作上下文。
+
+**变更范围驱动：** P5a 返回后提取 `>>SCOPE:` 标记写入 `_MEMORY_CACHE.md`：
 ```
-【变更范围】modules: order,payment | endpoints: POST /api/orders/* | 影响程度: 中
+【变更范围】modules: order,payment | endpoints: POST /api/orders/*
 ```
-后续 P6c 按 scope 定向测试、P6d 按 scope 定向 curl、P7 按 scope 扫规范漂移。
-无 `>>SCOPE:` 标记时 scope=full（全量执行，向下兼容）。
+后续按 scope 定向测试/curl/漂移检测。无标记时 scope=full。
 
-**评审门禁：** 每个产出阶段后必须紧跟对应评审 Phase。评审必须用 **全新 subagent**，入参**只含被评审文件路径 + 参考契约路径**，不携带任何创作上下文。
+**文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记时，按类型 dispatch 对应 subagent：
 
-**失败恢复（自适应矩阵）：** 完整列表见[自适应恢复](#自适应恢复)（含 🅴 测试 Bug + 🅵 集成验证失败）。
+| 文档 | subagent |
+|------|----------|
+| `doc/detailed/*.md` | `task-decomposer` |
+| `doc/arch/SAD.md` | `system-architect` |
+| `doc/prd/*.md` | `prd-writer` |
 
-各类型计数独立，进新 Phase 后清零。
-
-# 记忆注入（Step 0）
-
-```
-ai_memory_memory_init_session(project_name)
-  → 加载 resources/retrieval-strategy.md 执行多角度搜索
-  → 加载 resources/decision-quality.md（写决策时也用）
-  → 扫描项目结构 + 分析影响域 → 自动匹配流程强度
-  → 输出 _MEMORY_CACHE.md
-```
-
-`_MEMORY_CACHE.md` 格式：
-```
-【历史经验参考】{检索到的相关历史}
-【当前 Phase 上下文】Phase: X/Y | 前序产出: {路径} | 关键决策: {列表} | 下一步: {描述}
-```
-
-**持久化节奏：** 首个产出 Phase → `save_summary(status=in_progress)`；每 Phase 终了 → `add_decision` + `update_summary` + 重写 `_MEMORY_CACHE.md`；最终清理 → `update_summary(status=completed)` + 删临时文件。
-
-**文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记（格式：`>>DOC_SYNC: doc/detailed/xxx.md 字段变更` 或 `>>DOC_SYNC: doc/arch/SAD.md 配置变更`）。编排器按清单 dispatch 对应 subagent：
-
-| 文档类型 | subagent | 入参 |
-|---------|----------|------|
-| `doc/detailed/*.md` 详设 | `task-decomposer` | 目标文件路径 + `>>DOC_SYNC:` 描述 |
-| `doc/arch/SAD.md` 架构 | `system-architect` | 目标文件路径 + `>>DOC_SYNC:` 描述 |
-| `doc/prd/*.md` 需求 | `prd-writer` | 目标文件路径 + `>>DOC_SYNC:` 描述 |
-
-**prompt 模板：** `同步以下变更到{doc_type}文档 {path}: {DOC_SYNC 描述}。只修改涉及部分，不重写全文。`
-
-> DOC_SYNC 不含 `doc/` 前缀时默认走 `task-decomposer`。
-
-# 影响域分析与强度匹配
-
-**技术栈扫描：** `pom.xml/build.gradle`→Java；`go.mod`→Go；`requirements.txt/pyproject.toml`→Python；`package.json+server/`→Node；`vue/react`→前端框架；`miniprogram/weapp/uni-app/`→小程序
-
-**症状→根因推断（前端症状不锁定前端，先排除后端）：**
-
-**影响域层级（按检测到的栈映射文件模式）：** 视图层(Vue/React pages+components) → API/数据层(api/*, services/*) → 后端路由/控制器 → 后端业务/数据层 → DDL/数据模型 → 跨模块
-
-**流程强度匹配（自动选择，无需问用户）：**
-
-| 影响范围 | 强度 | Phase 序列（粗体=subagent，普通=主 agent） |
-|----------|------|-----------|
-| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位(precise-location) → **P5a**(code-developer) → **P5b**(code-reviewer) → P6d(主 agent curl) |
-| 同模块前后端，无DDL，无新增API | 🟢-light **轻标准** | **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7(规范漂移) |
-| 同模块前后端，无 DDL | 🟢 **标准** | **P3a**(task-decomposer) → **P3b**(review-expert) → **P5a**(code-developer) → **P5b**(code-reviewer) → **P6c**(tester) → P6d(主 agent curl) → P7 |
-| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a**→**P3b** → **P5a**→**P5b** → **P6a**(tester)→**P6b**→**P6c**→P6d → P7 |
-| 全新项目/跨模块重构 | 🔴 **全量** | **P1a**(prd-writer)→**P1b**→**P1c** → **P2a**(system-architect)→**P2b** → **P3a**→**P3b** → **P5a**→**P5b** → **P6a**→**P6b**→**P6c**→P6d → P7 |
-
-**🟢-light vs 🟢：** 无新增 API + 无数据模型变更 = 🟢-light（跳过 P3a/b）。否则 🟢。
-
-**跨层探测（防前端症状→前端锁定）：** 涉及创建/保存/删除/搜索的数据操作 → 先 API 直达测试排除后端再定论。console 无错误 → 对比 API 响应与前端类型定义。发现后端缺陷 → 至少 🟢 标准。
-
-# Phase 详解
-
-### 🐛 轻量模式
-```
-定位(precise-location.md) → P5a(code-developer)
-  ├─ 找到 Bug → task(code-developer) 修复 → P5b(code-reviewer)
-  └─ 静态无果 → P5a-r(运行时探测)
-       ├─ 数据操作 → API 直达测试(跳过前端)
-       ├─ 点击/导航 → console + 路由检查
-       ├─ 渲染/空白 → 网络请求 + 错误边界
-       ├─ 样式 → 仅前端
-       └─ 仍无果 → 标记已排除项 → 向用户澄清
-P5b → code-reviewer 评审 → 有>>DOC_SYNC:则按文档类型 dispatch subagent 同步契约 → P6d(快速 curl 验证) → 完成
-```
-- P5a：定位到 Bug 后 dispatch `code-developer` 修复。P5a-r 路径下**禁止在静态代码中空转**，按症状选探测手段，定位后仍走 code-developer。
-  - 🚪 **门禁：** P5a(code-developer) 返回后立即执行 `bash .opencode/scripts/check-code.sh`。P5a-r 路径不跑。
-- P5b：dispatch `code-reviewer`，入参只含改动文件路径 + 参考契约。
-  - 🚪 **门禁：** P5b 返回后立即执行 `bash .opencode/scripts/check-review.sh`。
-- P6d：`bash .opencode/scripts/check-integration.sh`（自动启动服务 + curl 验证）。
-- 跳过 PRD/架构/详设/DDL/测试用例。
-
-### 🟢-light 轻标准
-`P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
-跳过 P3a/b（设计确定性高）。P6c 按 scope 定向测试 + 全局冒烟，P6d 按 scope 定向 curl（通过 check-integration.sh 自动执行）。
-- 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
-- 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
-- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
-- 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
-
-### 🟢 标准
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
-不经过 PRD/架构/DDL。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
-- 🚪 **P3a 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-detailed.sh`
-- 🚪 **P3b 门禁：** review-expert 返回后立即执行 `bash .opencode/scripts/check-review.sh`
-- 🚪 **P5a 门禁：** code-developer 返回后立即执行 `bash .opencode/scripts/check-code.sh`
-- 🚪 **P5b 门禁：** code-reviewer 返回后立即执行 `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6c 门禁：** tester(阶段二) 返回后立即执行 `bash .opencode/scripts/check-test.sh`
-- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
-- 🚪 **P7 门禁：** task-decomposer 返回后立即执行 `bash .opencode/scripts/check-drift.sh`
-
-### 🟡 增量
-`P3a(task-decomposer) → P3b(review-expert) → P5a(code-developer) → P5b(code-reviewer) → P6a(tester 阶段一) → P6b(review-expert) → P6c(tester 阶段二) → P6d(check-integration.sh) → P7(规范漂移)`
-只对新模块输出详设，**禁止改现有模块代码**。DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
-- 🚪 **P3a 门禁：** `bash .opencode/scripts/check-detailed.sh`
-- 🚪 **P3b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P5a 门禁：** `bash .opencode/scripts/check-code.sh`
-- 🚪 **P5b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
-- 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
-- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
-- 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
-
-### 🔴 全量
-`P1a(prd-writer)→P1b→P1c(review-expert) → P2a(system-architect)→P2b(review-expert) → P3a(task-decomposer)→P3b(review-expert) → P5a(code-developer)→P5b(code-reviewer) → P6a(tester 阶段一)→P6b(review-expert)→P6c(tester 阶段二)→P6d(check-integration.sh) → P7(规范漂移)`
-严格按序，**每个评审 Phase 通过后才能进入下一产出 Phase**。DDL 由 task-decomposer 在详设中产出，不再单独产出。P6c 按 scope 定向 + 全局冒烟，P6d 通过 check-integration.sh 自动 curl 验证。
-- 🚪 **P1b 门禁：** `bash .opencode/scripts/check-prd.sh`
-- 🚪 **P1c 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P2a 门禁：** `bash .opencode/scripts/check-arch.sh`
-- 🚪 **P2b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P3a 门禁：** `bash .opencode/scripts/check-detailed.sh`
-- 🚪 **P3b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P5a 门禁：** `bash .opencode/scripts/check-code.sh`
-- 🚪 **P5b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6a 门禁：** `bash .opencode/scripts/check-testcase.sh`
-- 🚪 **P6b 门禁：** `bash .opencode/scripts/check-review.sh`
-- 🚪 **P6c 门禁：** `bash .opencode/scripts/check-test.sh`
-- 🚪 **P6d 门禁：** 主 agent 执行 `bash .opencode/scripts/check-integration.sh`
-- 🚪 **P7 门禁：** `bash .opencode/scripts/check-drift.sh`
-
-### Phase 特殊说明
-- **1a：** 读 `prd-writer/resources/interview-framework.md` 访谈 → `doc/prd/_requirements_summary.md`
-- **5a：** 解析 `>>DOC_SYNC:` 清单→按文档类型 dispatch subagent 同步契约。提取 `>>SCOPE:` 清单写入 _MEMORY_CACHE.md【变更范围】。**全栈模式额外**：对比前端 API 调用层和后端路由，输出 `_contract_check.md` 偏差报告。P0 偏差（路径/方法/字段名不一致）→ 阻断 repair
-- **6c：** 🐛仅存量测试 / 🟢-light+🟢存+增量测试 / 🟡+🔴走完整 P6a→P6b→P6c。**6c 只能由 `tester(阶段二)` subagent 执行。** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 tester（定向测试 + 全局冒烟）。
-  - **测试范围优化（"只跑改动了的"）：** `check-test.sh` 自动从 `>>SCOPE: modules=` 读取影响模块，映射到对应测试文件定向执行。scope 为空时通过 git diff 推断模块。具体决策树：
-    - `scope=full` 或 5+ 文件变更 → 全量测试（scheduler 全量）
-    - `scope=targeted` 或 1-4 文件变更 → 只跑影响模块的测试 + 烟雾测试
-    - `scope=smoke` 或无变更 → 仅烟雾测试（test_health.py）
-  - 无 `>>SCOPE:` 标记 → 编排器拒绝进入 P6c，回退 P5a 要求补全标记
-- **6d（集成验证）：** 从 _MEMORY_CACHE.md【变更范围】取 scope 传给 `check-integration.sh`，只 curl 影响端点 + 健康检查。执行 `bash .opencode/scripts/check-integration.sh`。脚本自动检测项目类型、启动服务、curl 各端点、验证 HTTP 状态码和 JSON 合法性、生成集成验证报告到 `doc/tester/integration-report.md`。
-  - `SCOPE_ENDPOINTS` 环境变量可覆盖端点列表（逗号分隔），不传则从 `_MEMORY_CACHE.md` 的 `>>SCOPE: endpoints=` 读取
-  - 无 scope 时默认验 `/health` 和 `/api/health`
-  - **优化跳过：** 当 endpoints 仅含健康检查 + 影响模块不含 main/route/api → 纯内部变更，跳过服务启动（exit 2）。无需每次启动服务。
-  - 脚本返回 0 → 通过，返回 1 → 进入 Bug-fix Loop，返回 2 → 跳过
-  - 6d 发现 Bug 进入 Bug-fix Loop。
-- **P7（规范漂移检测）：** 从【变更范围】取 scope 模块，读 `项目规则.md` + `编码规范.md`，比对实际代码模式。同模式偏差 ≥3 次且规范无记载 → 判断为系统性漂移 → dispatch `task(task-decomposer)` 更新规范。无漂移或不足阈值 → P7 耗时 < 30 秒。🐛 模式跳过 P7。
-  - **prompt 模板：** `检测到系统性漂移：{列举偏移项}。追加以下规范到{doc/detailed/项目规则.md或编码规范.md}，只追加不修改已有内容：{偏移项 → 规范表述}。`
-  - **只 append 不覆盖：** 禁止修改已有条款，只在文档末尾追加新节。变更记录加一行 `P7-{日期} 自动进化: {摘要}`。
-  - **可选增强：** 涉及接口漂移时，可运行 `opencode run check-doc-drift` 命令做语义级文档-代码对比（路径/方法/字段 P0 阻断检测），输出漂移报告后按 `>>DOC_SYNC:` 流程 dispatch subagent 同步。
-
-### Phase 执行表
-
-| Phase | agent | 门禁（`.opencode/scripts/`） | 评审参考 |
-|-------|-------|------|---------|
-| 1b 需求产出 | `prd-writer` | `check-prd.sh` | — |
-| 1c PRD评审 | `review-expert` | `check-review.sh` | 参考 doc/arch/ |
-| 2a 架构产出 | `system-architect` | `check-arch.sh` | — |
-| 2b 架构评审 | `review-expert` | `check-review.sh` | 参考 doc/prd/ |
-| 3a 详设产出 | `task-decomposer` | `check-detailed.sh` | — |
-| 3b 详设评审 | `review-expert` | `check-review.sh` | 参考 doc/arch/ |
-| 5a 编码产出 | `code-developer` | `check-code.sh` | — |
-| 5b 代码评审 | `code-reviewer` | `check-review.sh` | 对照 doc/arch/, doc/detailed/ |
-| 6a 用例产出 | `tester(阶段一)` | `check-testcase.sh` | — |
-| 6b 用例评审 | `review-expert` | `check-review.sh` | 参考 doc/detailed/ |
-| 6c 测试执行 | `tester(阶段二)` | `check-test.sh` | — |
-| 6d 集成验证 | **主 agent（调用 check-integration.sh）** | `check-integration.sh`（自动启动服务 + curl 验证） | 对照 doc/detailed/ OpenAPI 定义 |
-| P7 规范漂移检测 | `task-decomposer`（有漂移时） | `check-drift.sh` | 对照 `项目规则.md`、`编码规范.md` |
-
-> ⚡ **门禁铁律：** 🐛 模式的 P5a-r（运行时探测）路径不跑 check-code.sh。其余所有产出 Phase 的 subagent 返回后**必须立即**执行对应门禁脚本，无一例外。门禁未通过 → 走自适应恢复，不能跳过进入下一 Phase。🐛 模式跳过 P7。
-> 
-> ⚡ **审计铁律：** 每个 Phase 开始前跑 `check-audit.sh snapshot`、结束后跑 `check-audit.sh verify`。审计发现未经 subagent 授权的文件修改 → 走自适应恢复。
-
-# Bug-fix Loop（测试→修复→重验闭环）
-
-**标准路径（P6c/P6d → 回到 P5a）：**
+**Bug-fix Loop（P6c/P6d 发现 Bug → 回退 P5a）：**
 
 ```
-P6c/P6d 发现 Bug
-  → 写 _MEMORY_CACHE.md 记录 Bug 清单（接口/错误/根因推测/文件范围）
-  → [回退到 P5a] task(subagent_type='code-developer') 修复
-  → [回归] 更新测试 + 重新 P6c（走 tester subagent）+ P6d（bash .opencode/scripts/check-integration.sh）
-  → Bug 清零？→ 检查是否需要 DOC_SYNC（修复是否改变了外部接口/字段名/行为）→ 按文档类型 dispatch subagent 同步契约 → 继续下一 Phase
-  → 仍有 Bug？→ 再次进入 Loop（同一 Bug 3 次仍不通过 → 报告用户）
+记录 Bug 清单 → dispatch code-developer 修复 → 回归测试 → Bug 清零？
+→ 否？→ 3次仍不过则报告用户
+→ 是？→ 有 DOC_SYNC？→ 同步契约 → 继续
 ```
 
-**三条规则：**
-1. 修复走 `code-developer` subagent。（`edit:deny` 强制执行）
-2. 回归测试走 `tester` subagent。（保持门禁独立性）
-3. **2 次仍未清零 → 输出"未解决清单"到 _MEMORY_CACHE.md → 等用户决策。** 防止死循环。
+**自适应恢复：**
 
-**回退路径的上下文规则：** 回退到 P5a 时，从 _MEMORY_CACHE.md 读 Bug 清单构建上下文，不清空已有上下文。回退到 P6c 时同上。
-
-# 上下文预算（防工具衰减）
-
-**问题：** 每 Phase 的 OODA 决策、subagent 结果、失败恢复都在主 agent 上下文中堆积。
-堆积 → 工具调用退化。
-
-**三条硬性规则：**
-
-1. **每 Phase 开始前裁剪上下文。** 除 `_MEMORY_CACHE.md` 和本 Phase 执行表条目外，
-   前一 Phase 的所有推理、决策理由、失败历史视为已归档。不带到当前 Phase。
-   执行：在 OODA 前置的第一步说"Phase N 开始，前序推理已归档"。
-
-2. **Phase 终了协议（每 Phase 末尾，不中断）：**
-   a. `ai_memory_memory_add_decision()` + `update_summary()` — 持久化关键决策
-   b. 重写 `_MEMORY_CACHE.md` [Phase 上下文] — 只保留下一 Phase 需要的最少上下文
-   c. 显式声明"Phase N 上下文已归档，下一 Phase 从 _MEMORY_CACHE.md 重建"。
-
-3. **工具衰减时重置（不重试）。** subagent 产出质量明显下降（连续 2 次同质失败前）
-   是上下文堆积信号。此时不追加 prompt 重试（那会增加上下文），而是：
-   暂停 → 输出"工具衰减，重置上下文" → 读 `_MEMORY_CACHE.md` 重建当前 Phase 上下文
-   → 重新发起 subagent 调用。
-
-# 自适应恢复
-
-| 情况 | 怎么处理 |
-|------|---------|
+| 情况 | 处理 |
+|------|------|
 | 🅰 subagent 崩溃 | 精简 prompt 重试 → 拆小粒度 → 标记跳过 |
-| 🅱 评审未通过 | 按清单定向修(优先P0/P1) → 查根因是否在更早Phase → 重审 |
-| 🅲 产出质量差 | 重读需求 → 调prompt加约束 → 重执行 |
-| 🅳 死循环(2次同质失败) | 暂停 → 搜索历史记忆 → 换策略 → 不行则报告用户 |
-| 🅴 测试发现 Bug | 见 Bug-fix Loop。走 code-developer 修复 |
-| 🅵 集成验证失败 | 进入 Bug-fix Loop。环境/配置问题同样走 code-developer |
+| 🅱 评审未通过 | 按清单定向修 → 查根因是否在更早 Phase → 重审 |
+| 🅲 产出质量差 | 重读需求 → 调 prompt → 重执行 |
+| 🅳 死循环(2次同质失败) | 暂停 → 搜历史换策略 → 不行则报告用户 |
+| 🅴🅵 测试/Bug | 走 Bug-fix Loop |
 
-各类型计数独立，进新 Phase 清零。
+## 3. 跑门禁
 
-# 最终清理（Step 10）
+每个 subagent Phase 返回后**立即**跑对应门禁：
 
-`ai_memory_memory_update_summary(status=completed)` → `bash .opencode/scripts/check-audit.sh clean` → 删 `_MEMORY_CACHE.md`、`_contract_check.md` → 输出 ✅ **Pipeline 完成** + 产出物汇总。
+| Phase | 门禁 |
+|-------|------|
+| P1b | `bash .opencode/scripts/check-prd.sh` |
+| P2a | `bash .opencode/scripts/check-arch.sh` |
+| P3a | `bash .opencode/scripts/check-detailed.sh` |
+| P5a | `bash .opencode/scripts/check-code.sh` |
+| P6a | `bash .opencode/scripts/check-testcase.sh` |
+| P6c | `bash .opencode/scripts/check-test.sh` |
+| P6d | `bash .opencode/scripts/check-integration.sh` |
+| P7 | `bash .opencode/scripts/check-drift.sh` |
+| 评审(1c/2b/3b/5b/6b) | `bash .opencode/scripts/check-review.sh` |
 
-> 若 P7 触发了规范更新，在摘要中注明：`⚡ 规范已进化: {变更摘要}`
+> 🐛 模式 P5a-r（运行时探测）不跑 check-code.sh。🐛 跳过 P7。
+> 门禁返回非 0 → 走自适应恢复。通过后进入下一 Phase。
+
+**审计快照（每 Phase 前后）：**
+- Phase 前：`bash .opencode/scripts/check-audit.sh snapshot {Phase}`
+- Phase 后：`bash .opencode/scripts/check-audit.sh verify {Phase}`
+
+# 上下文管理
+
+- **每 Phase 开始前裁剪：** 只保留 `_MEMORY_CACHE.md` + 本 Phase 指令，前序推理不带到下一 Phase
+- **Phase 终了：** `add_decision()` + `update_summary()` + 重写 `_MEMORY_CACHE.md`
+- **工具衰减时：** 连续 2 次同质失败 → 暂停，重置上下文后再 dispatch，不追加 prompt 重试
+- **最终清理：** `update_summary(completed)` → `check-audit.sh clean` → 删临时文件 → 输出产出物汇总
