@@ -101,7 +101,15 @@ RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
 [ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 10 ] && ok "$SCRIPT_COUNT/10 scripts" || info "scripts: $SCRIPT_COUNT/10（预期 10）"
+[ "$SCRIPT_COUNT" -eq 13 ] && ok "$SCRIPT_COUNT/13 scripts" || info "scripts: $SCRIPT_COUNT/13（预期 13）"
+
+# check-opencode.sh 必须可执行（自举门禁需要）
+if [ -x "$TARGET/.opencode/scripts/check-opencode.sh" ]; then
+  ok "check-opencode.sh 可执行"
+else
+  fail "check-opencode.sh 不可执行（chmod +x .opencode/scripts/check-opencode.sh）"
+  ERRORS=$((ERRORS+1))
+fi
 
 if [ "$ERRORS" -gt 0 ]; then
   fail "安装完成，但存在 $ERRORS 个问题，请检查"
