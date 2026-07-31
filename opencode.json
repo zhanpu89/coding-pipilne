@@ -67,8 +67,13 @@
           "frontend/**": "allow",
           "tests/**": "allow"
         },
-        "write": "allow",
-        "bash": "allow"
+        "write": {
+          "src/**": "allow",
+          "app/**": "allow",
+          "frontend/**": "allow",
+          "tests/**": "allow"
+        },
+        "bash": "deny"
       },
       "prompt": "{file:.opencode/skills/code-developer/SKILL.md}"
     },
