@@ -29,13 +29,26 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 ## 2. 按照分析编排任务
 
-按 Phase 序列逐个 dispatch subagent，每 Phase 只做三小步：
+按 Phase 序列逐个 dispatch subagent，每 Phase 只做三小步 + OODA 反思：
 
 ```
 ① 裁剪上下文 — 只留 _MEMORY_CACHE.md + 本 Phase 指令
 ② dispatch task(subagent_type) — 入参只含最少上下文
 ③ 记录决策 — ai_memory_memory_add_decision() + update_summary()
+④ OODA 反思 — 观察结果，判断质量，决定是否调整下一 Phase
 ```
+
+**OODA 反思（每 Phase 终了执行）：**
+
+| 反思问题 | 触发条件 | 行动 |
+|----------|---------|------|
+| 产出质量是否符合预期？ | 每次 Phase 结束 | 质量低 → 走 🅲 恢复 |
+| 门禁是否通过？ | 有门禁的 Phase | 失败 → 走 🅱 恢复 |
+| 变更范围是否合理？ | P5a 后 | scope 超预期 → 收窄范围 |
+| 是否有跨 Phase 风险？ | 任意 Phase | 有 → 记录风险到 _MEMORY_CACHE.md |
+| 是否需要调整强度？ | 任意 Phase | 超时/失败多 → 升档；顺畅 → 降档 |
+
+> 反思结果写入 `_MEMORY_CACHE.md` 的决策记录，不打断当前 Phase 流程。
 
 **dispatch 对照表：**
 
@@ -43,6 +56,7 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 |-------|-------|------|
 | 1a PRD 产出 | `prd-writer` | `doc/prd/*.md` |
 | 1b PRD 评审 | `review-expert` | 评审报告 |
+| 1c PRD 签收 | **主 agent** | 确认 PRD 通过审查，进入架构设计 |
 | 2a 架构产出 | `system-architect` | `doc/arch/SAD.md` + `tech-stack.json` |
 | 2b 架构评审 | `review-expert` | 评审报告 |
 | 3a 详设产出 | `task-decomposer` | `doc/detailed/*.md` + 项目规则/编码规范 |
@@ -105,6 +119,7 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 | Phase | 门禁 |
 |-------|------|
 | P1b | `bash .opencode/scripts/check-prd.sh` |
+| P1c | `bash .opencode/scripts/check-prd.sh`（签收二次确认） |
 | P2a | `bash .opencode/scripts/check-arch.sh` |
 | P3a | `bash .opencode/scripts/check-detailed.sh` |
 | P5a | `bash .opencode/scripts/check-code.sh` → `bash .opencode/scripts/check-arch-compliance.sh` |
@@ -117,15 +132,18 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 **P7b 漂移同步（按漂移类型 dispatch 对应 doc agent）：**
 
-code-reviewer 在 P7a 产出的漂移报告按文档类型分类。编排器按类型 dispatch：
+P7a 中 code-reviewer 产出的漂移报告 (`doc/tester/drift-report.md`) 按文档类型分类。编排器必须逐类执行：
 
-| 漂移类型 | 对应 doc agent | 同步目标 | 门禁 |
-|----------|---------------|---------|------|
+1. 读取漂移报告，找出所有含漂移的条目
+2. 按漂移来源文档归类：详设变更 → `doc/detailed/`，SAD 变更 → `doc/arch/`，PRD 变更 → `doc/prd/`
+3. 每个 doc 类型调用对应 subagent：`| 漂移类型 | subagent | 同步目标 | 门禁 |`
+4. 每类同步后跑对应门禁，全部通过才进入最终清理
+
+| 漂移类型 | subagent | 同步目标 | 门禁 |
+|----------|----------|---------|------|
 | 详设变更 | `task-decomposer` | `doc/detailed/*.md` | `bash .opencode/scripts/check-detailed.sh` |
 | SAD 变更 | `system-architect` | `doc/arch/SAD.md` + `tech-stack.json` | `bash .opencode/scripts/check-arch.sh` |
 | PRD 变更 | `prd-writer` | `doc/prd/*.md` | `bash .opencode/scripts/check-prd.sh` |
-
-每次同步后跑对应门禁，通过后进入最终清理。
 - Phase 前：`bash .opencode/scripts/check-audit.sh snapshot {Phase}`
 - Phase 后：`bash .opencode/scripts/check-audit.sh verify {Phase}`
 

@@ -57,7 +57,15 @@
           "opencode.json": "deny",
           "AGENTS.md": "deny",
           ".opencode/**": "deny",
-          "*": "allow"
+          "doc/arch/**": "deny",
+          "doc/prd/**": "deny",
+          "doc/review/**": "deny",
+          "doc/detailed/**": "deny",
+          "doc/tester/**": "deny",
+          "src/**": "allow",
+          "app/**": "allow",
+          "frontend/**": "allow",
+          "tests/**": "allow"
         },
         "write": "allow",
         "bash": "allow"
@@ -82,13 +90,15 @@
           "src/**": "deny",
           "app/**": "deny",
           "frontend/src/**": "deny",
-          "*": "allow"
+          "doc/tester/**": "allow",
+          "*": "deny"
         },
         "write": {
           "src/**": "deny",
           "app/**": "deny",
           "frontend/src/**": "deny",
-          "*": "allow"
+          "doc/tester/**": "allow",
+          "*": "deny"
         },
         "bash": "allow"
       },
