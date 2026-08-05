@@ -133,7 +133,9 @@ if [ -n "$SCOPE_MODULES" ]; then
 else
   SRC_TARGETS="src tests"
 fi
-FP=$(find $SRC_TARGETS -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1)
+# 指纹纳入构建/依赖文件（依赖或配置变化也会使缓存失效）
+BUILD_FILES="pom.xml build.gradle build.gradle.kts settings.gradle go.mod go.sum Cargo.toml Cargo.lock package.json package-lock.json requirements.txt pyproject.toml setup.py"
+FP=$(find $SRC_TARGETS $BUILD_FILES -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1)
 CACHE_FILE="$CACHE_DIR/test-${PROJECT_TYPE}-${CACHE_KEY:-full}.cache"
 
 if [ -n "$FP" ] && [ -f "$CACHE_FILE" ]; then
@@ -157,7 +159,7 @@ case "$PROJECT_TYPE" in
           SCOPED_PATTERN="${SCOPED_PATTERN:+$SCOPED_PATTERN,}*${m}*Test"
         done
         echo "    定向类: -Dtest=$SCOPED_PATTERN"
-        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" -Dsurefire.failIfNoSpecifiedTests=false 2>&1)
+        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" 2>&1)
       else
         TEST_OUTPUT=$(mvn test -q 2>&1)
       fi
@@ -209,9 +211,26 @@ case "$PROJECT_TYPE" in
 
   rust)
     if command -v cargo &>/dev/null; then
-      echo "  📦 Cargo test..."
-      TEST_OUTPUT=$(cargo test 2>&1)
-      EXIT_CODE=$?
+      if [ -n "$SCOPE_MODULES" ]; then
+        # T1 定向：只跑受影响 crate/module 的测试（cargo test <module> 过滤）
+        RUST_TARGETS=""
+        for m in $SCOPE_MODULES; do
+          RUST_TARGETS="$RUST_TARGETS $m"
+        done
+        RUSTOK=1
+        for m in $RUST_TARGETS; do
+          echo "    定向模块: cargo test $m"
+          T=$(cargo test "$m" 2>&1)
+          [ $? -ne 0 ] && RUSTOK=0
+          TEST_OUTPUT="$TEST_OUTPUT
+$T"
+        done
+        [ "$RUSTOK" -eq 1 ] && EXIT_CODE=0 || EXIT_CODE=1
+      else
+        echo "  📦 Cargo test..."
+        TEST_OUTPUT=$(cargo test 2>&1)
+        EXIT_CODE=$?
+      fi
     else
       echo "  ⚠️  cargo 不可用，跳过测试"
       EXIT_CODE=2
@@ -281,18 +300,23 @@ case "$PROJECT_TYPE" in
       for cand in tests/test_health.py tests/test_smoke*.py; do
         [ -e "$cand" ] && SCOPED_TARGETS="$SCOPED_TARGETS $cand"
       done
-      echo "    定向目标: $SCOPED_TARGETS"
-      if command -v pytest &>/dev/null; then
-        TEST_OUTPUT=$(pytest -v $SCOPED_TARGETS 2>&1)
-      elif command -v python3 &>/dev/null; then
-        TEST_OUTPUT=$(python3 -m pytest -v $SCOPED_TARGETS 2>&1)
-      elif command -v python &>/dev/null; then
-        TEST_OUTPUT=$(python -m pytest -v $SCOPED_TARGETS 2>&1)
+      if [ -z "$SCOPED_TARGETS" ]; then
+        echo "  ⚠️  定向目标为空：模块 [$SCOPE_MODULES] 未匹配到任何测试文件，禁止回落全量，标记失败"
+        EXIT_CODE=1
       else
-        echo "  ⚠️  pytest 不可用，跳过测试执行"
-        EXIT_CODE=2
+        echo "    定向目标: $SCOPED_TARGETS"
+        if command -v pytest &>/dev/null; then
+          TEST_OUTPUT=$(pytest -v $SCOPED_TARGETS 2>&1)
+        elif command -v python3 &>/dev/null; then
+          TEST_OUTPUT=$(python3 -m pytest -v $SCOPED_TARGETS 2>&1)
+        elif command -v python &>/dev/null; then
+          TEST_OUTPUT=$(python -m pytest -v $SCOPED_TARGETS 2>&1)
+        else
+          echo "  ⚠️  pytest 不可用，跳过测试执行"
+          EXIT_CODE=2
+        fi
+        EXIT_CODE=$?
       fi
-      EXIT_CODE=$?
     elif command -v pytest &>/dev/null; then
       echo "    pytest..."
       TEST_OUTPUT=$(pytest -v 2>&1)
@@ -330,7 +354,7 @@ case "$PROJECT_TYPE" in
           SCOPED_PATTERN="${SCOPED_PATTERN:+$SCOPED_PATTERN,}*${m}*Test"
         done
         echo "    定向类: -Dtest=$SCOPED_PATTERN"
-        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" -Dsurefire.failIfNoSpecifiedTests=false 2>&1)
+        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" 2>&1)
       else
         TEST_OUTPUT=$(mvn test -q 2>&1)
       fi

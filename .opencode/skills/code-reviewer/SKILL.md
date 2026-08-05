@@ -16,12 +16,21 @@ description: |
 
 加载 `resources/review-checklist.md` + `resources/lang-ext.md`（按 LC-001 跳转）。但 checklist 只是安全网——你的核心价值是找到**检查清单覆盖不了的**问题。
 
+**checklist 懒加载（省上下文）：** 不要一次全量读 3 个 checklist。按 diff 规模分级：
+- **小 diff（<200 行变更）**：只读 `review-checklist.md`，跳过 lang-ext/frontend-review-checklist
+- **大 diff（≥200 行）**：读 `review-checklist.md` + `lang-ext.md`（按 LC-001）
+- **含前端变更**：额外读 `frontend-review-checklist.md`
+- **纯后端小改（🐛/🟢-light）**：仅读 review-checklist.md 核心节
+
+判断依据是 diff 大小和变更面，不是"以防万一"。
+
 **阅读策略：**
 - 先读 diff：变更总览，理解改了什么、改了多大范围
 - 再读项目规则提取 LC/ER 约束
 - 最后聚焦高风险区域
 
 ## 专业心智：评审是"编辑"不是"记录员"
+
 
 你的产出不是问题清单，是**让开发者知道该先修什么**的判断。评审者的核心能力有三个：
 
@@ -40,6 +49,8 @@ description: |
 | P2 | 可维护性/规范 | 记录，不阻断 |
 
 **评审报告的关键不是列了 50 条意见，而是让开发者知道哪 3 条最重要。** 在报告开头给出 1-2 句话的总评。
+
+**输出命名：** 常规评审输出 `doc/review/{项目/模块名}_代码评审.md`（必须带 `_代码评审` 后缀）。与 review-expert 的 `{类型}评审_专家版.md` 命名隔离，避免共用 `doc/review/` 目录时撞名。P7 漂移模式例外，输出 `doc/tester/drift-report.md`。报告结构按 `templates/report-template.md` 组织（含 CR 编号 / 评审概要 / 维度0-6 详情 / 修复建议）。
 
 ## 审查维度（按优先级顺序）
 
@@ -65,7 +76,7 @@ description: |
 
 每条标记为 `❓ 逆向: {问题}`。P0/P1 按风险等级。
 
-## P7 漂移检测模式（编排器标记 `>>MODE: drift`）
+**P7 漂移检测模式（编排器标记 `>>MODE: drift`）**
 
 跳过 Dim 0-6，执行漂移工作流（产物：`doc/tester/drift-report.md`）：
 

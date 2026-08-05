@@ -23,6 +23,7 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | `check-code.sh` | 5a | 代码产出：文件统计 + 编译/类型检查 + 空文件检测 + Lint |
 | `check-detailed.sh` | 3a | 详设产出：文件大小 + 必备章节（^## 标题锚定）+ 规则文件检测 |
 | `check-drift.sh` | P7 | 规范漂移检测：规则文件 + P7 进化记录 + Scope 跟踪 |
+| `check-feedback.sh` | 全部 | 反馈闭环健康检查：user-feedback.jsonl 存在性 + 窗口内活跃检测；编排器最终清理前运行 |
 | `check-integration.sh` | 6d | 集成验证：curl 端到端 + 稳定性检查 |
 | `check-opencode.sh` | P5a/自举 | Pipeline 工具自验证：bash语法 + JSON格式 + SKILL结构 |
 | `check-prd.sh` | 1b | PRD 产出：文件大小 + 必备章节 + 技术术语检测 |

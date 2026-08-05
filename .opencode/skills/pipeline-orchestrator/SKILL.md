@@ -66,6 +66,8 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 
 **采集纪律：** 原话照录（verbatim），不润色不替用户总结，因为修正差量是黄金信号。severity=3 时同时走 ai_memory_memory_add_decision() 记录，并**立即**触发 self-evolve 分析（不等周期攒批）。**"没抱怨"≠"做得好"**，不要因为用户沉默就跳过此步。
 
+**硬性熔断：** 每次收到用户负面反馈（纠正/吐槽/改向），调用 `log-feedback.sh` 是本会话的**不可跳过步骤**，等同门禁。最终清理前运行 `bash .opencode/scripts/check-feedback.sh` —— 若本会话确有反馈却未写入（exit 2），视为违规，需补记后再交付。这条规则的目的：把"采集靠自觉"变成"采集可验证"，防止 self-evolve 因数据源为空而死锁。
+
 **OODA 反思（每 Phase 终了执行）：**
 
 | 反思问题 | 触发条件 | 行动 |
@@ -107,14 +109,6 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 【变更范围】modules: order,payment | endpoints: POST /api/orders/*
 ```
 后续按 scope 定向测试/curl/漂移检测。无标记时 scope=full。
-
-**文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记时，按类型 dispatch 对应 subagent：
-
-| 文档 | subagent |
-|------|----------|
-| `doc/detailed/*.md` | `task-decomposer` |
-| `doc/arch/SAD.md` | `system-architect` |
-| `doc/prd/*.md` | `prd-writer` |
 
 **Bug-fix Loop（P6c/P6d 发现 Bug → 回退 P5a）：**
 
@@ -160,8 +154,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 
 | Phase | 门禁 |
 |-------|------|
-| P1b | `bash .opencode/scripts/check-prd.sh` |
-| P1c | `bash .opencode/scripts/check-prd.sh`（签收二次确认） |
+| P1b/P1c | `bash .opencode/scripts/check-prd.sh` |
 | P2a | `bash .opencode/scripts/check-arch.sh` |
 | P3a | `bash .opencode/scripts/check-detailed.sh` |
 | P5a | `bash .opencode/scripts/check-code.sh` → `bash .opencode/scripts/check-arch-compliance.sh` |
@@ -169,27 +162,22 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P6c | `bash .opencode/scripts/check-test.sh`（T1 定向：有 `>>SCOPE: modules=` 时只跑受影响模块+冒烟；无则 T2 全量；同指纹自动缓存跳过） |
 | P6d | `bash .opencode/scripts/check-integration.sh` |
 | P7a | `bash .opencode/scripts/check-drift.sh` |
-| P7b | 有漂移时：dispatch doc agent 同步 + `check-detailed.sh` / `check-arch.sh` / `check-prd.sh` |
-| 评审(1b) | `bash .opencode/scripts/check-review.sh --name 需求评审` |
-| 评审(2b) | `bash .opencode/scripts/check-review.sh --name 架构评审` |
-| 评审(3b) | `bash .opencode/scripts/check-review.sh --name 详细设计评审` |
-| 评审(5b) | `bash .opencode/scripts/check-review.sh --name 代码评审` |
-| 评审(6b) | `bash .opencode/scripts/check-review.sh --name 测试用例评审` |
+| 评审 1b/2b/3b/5b/6b | `bash .opencode/scripts/check-review.sh --name {需求/架构/详细设计/代码/测试用例}评审` |
+| P7b | 按漂移表 dispatch doc agent 同步后，跑对应门禁（见下方漂移表） |
 
-**P7b 漂移同步（按漂移类型 dispatch 对应 doc agent）：**
+**文档同步 / P7b 漂移表（doc 类型 → subagent → 门禁，一处定义多处用）：**
 
-P7a 中 code-reviewer 产出的漂移报告 (`doc/tester/drift-report.md`) 按文档类型分类。编排器必须逐类执行：
+`>>DOC_SYNC:` 标记或 P7a 漂移报告（`doc/tester/drift-report.md`）中的条目，按来源文档归类后逐类执行：
 
-1. 读取漂移报告，找出所有含漂移的条目
-2. 按漂移来源文档归类：详设变更 → `doc/detailed/`，SAD 变更 → `doc/arch/`，PRD 变更 → `doc/prd/`
-3. 每个 doc 类型调用对应 subagent：`| 漂移类型 | subagent | 同步目标 | 门禁 |`
-4. 每类同步后跑对应门禁，全部通过才进入最终清理
+1. 读取漂移报告，按漂移来源文档归类
+2. 按下表 dispatch 对应 doc subagent 同步
+3. 每类同步后跑对应门禁，全部通过才进入最终清理
 
-| 漂移类型 | subagent | 同步目标 | 门禁 |
+| 文档类型 | subagent | 同步目标 | 门禁 |
 |----------|----------|---------|------|
-| 详设变更 | `task-decomposer` | `doc/detailed/*.md` | `bash .opencode/scripts/check-detailed.sh` |
-| SAD 变更 | `system-architect` | `doc/arch/SAD.md` + `tech-stack.json` | `bash .opencode/scripts/check-arch.sh` |
-| PRD 变更 | `prd-writer` | `doc/prd/*.md` | `bash .opencode/scripts/check-prd.sh` |
+| 详设 | `task-decomposer` | `doc/detailed/*.md` | `bash .opencode/scripts/check-detailed.sh` |
+| 架构 | `system-architect` | `doc/arch/SAD.md` + `tech-stack.json` | `bash .opencode/scripts/check-arch.sh` |
+| 需求 | `prd-writer` | `doc/prd/*.md` | `bash .opencode/scripts/check-prd.sh` |
 - Phase 前：`bash .opencode/scripts/check-audit.sh snapshot {Phase}`
 - Phase 后：`bash .opencode/scripts/check-audit.sh verify {Phase}`
 

@@ -95,6 +95,7 @@ REF_FILES=(
   ".opencode/scripts/check-code.sh"
   ".opencode/scripts/check-detailed.sh"
   ".opencode/scripts/check-drift.sh"
+  ".opencode/scripts/check-feedback.sh"
   ".opencode/scripts/check-integration.sh"
   ".opencode/scripts/check-prd.sh"
   ".opencode/scripts/check-review.sh"
@@ -167,7 +168,7 @@ if all_good:
 # SKILL 中"产出/输出/写入"语境下声明的路径必须能被 opencode.json 的 write 权限覆盖
 echo ""
 echo "--- 权限契约一致性 ---"
-PERM_MISMATCH=$(.opencode/scripts/_perm_check.py 2>/dev/null || python3 -c "
+PERM_MISMATCH=$(python3 -c "
 import json, os, re, fnmatch
 with open('$PROJECT_DIR/opencode.json') as f:
     d = json.load(f)
