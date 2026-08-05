@@ -6,7 +6,8 @@
     ".opencode/rules/endpoint-lock.md",
     ".opencode/rules/json-write-safety.md",
     ".opencode/rules/code-discipline.md",
-    ".opencode/rules/doc-alignment.md"
+    ".opencode/rules/doc-alignment.md",
+    ".opencode/rules/arch-thinking.md"
   ],
   "agent": {
     "prd-writer": {
@@ -81,8 +82,8 @@
       "description": "代码质量门禁，评审代码并输出结构化报告",
       "mode": "subagent",
       "permission": {
-        "edit": { "*": "deny", "doc/review/**": "allow" },
-        "write": { "*": "deny", "doc/review/**": "allow" },
+        "edit": { "*": "deny", "doc/review/**": "allow", "doc/tester/drift-report.md": "allow" },
+        "write": { "*": "deny", "doc/review/**": "allow", "doc/tester/drift-report.md": "allow" },
         "bash": "deny"
       },
       "prompt": "{file:.opencode/skills/code-reviewer/SKILL.md}"
@@ -92,18 +93,16 @@
       "mode": "subagent",
       "permission": {
         "edit": {
-          "src/**": "deny",
-          "app/**": "deny",
-          "frontend/src/**": "deny",
+          "*": "deny",
           "doc/tester/**": "allow",
-          "*": "deny"
+          "src/test/**": "allow",
+          "tests/**": "allow"
         },
         "write": {
-          "src/**": "deny",
-          "app/**": "deny",
-          "frontend/src/**": "deny",
+          "*": "deny",
           "doc/tester/**": "allow",
-          "*": "deny"
+          "src/test/**": "allow",
+          "tests/**": "allow"
         },
         "bash": "allow"
       },
@@ -113,8 +112,8 @@
       "description": "半自动工具自我进化，分析历史调用日志后输出改进建议",
       "mode": "subagent",
       "permission": {
-        "edit": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow" },
-        "write": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow" },
+        "edit": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow", ".opencode/scripts/log-feedback.sh": "allow" },
+        "write": { "*": "deny", ".opencode/skills/**": "allow", ".opencode/rules/**": "allow", ".opencode/scripts/log-skill.sh": "allow", ".opencode/scripts/log-feedback.sh": "allow" },
         "bash": "allow"
       },
       "prompt": "{file:.opencode/skills/self-evolve/SKILL.md}"

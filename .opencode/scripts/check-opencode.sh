@@ -101,6 +101,7 @@ REF_FILES=(
   ".opencode/scripts/check-test.sh"
   ".opencode/scripts/check-testcase.sh"
   ".opencode/scripts/log-skill.sh"
+  ".opencode/scripts/log-feedback.sh"
 )
 MISSING=0
 for f in "${REF_FILES[@]}"; do
@@ -136,6 +137,85 @@ for name in agents:
 if all_good:
     print('  所有 agent 有对应 SKILL.md ✅')
 " 2>&1 || ERRORS=$((ERRORS + 1))
+
+# ---- 6. SKILL 资源引用完整性 ----
+# 检查每个 SKILL.md 中引用的 resources/*.md 和 templates/*.md 是否真实存在
+echo ""
+echo "--- SKILL 资源引用完整性 ---"
+python3 -c "
+import os, re, sys
+skills_dir = '$PROJECT_DIR/.opencode/skills'
+all_good = True
+for name in sorted(os.listdir(skills_dir)):
+    skill_dir = os.path.join(skills_dir, name)
+    skill_file = os.path.join(skill_dir, 'SKILL.md')
+    if not os.path.isfile(skill_file):
+        continue
+    with open(skill_file) as f:
+        content = f.read()
+    # 匹配 resources/xxx.md 和 templates/xxx.md 引用
+    refs = set(re.findall(r'(?:resources|templates)/[\w.-]+\.md', content))
+    for ref in sorted(refs):
+        if not os.path.exists(os.path.join(skill_dir, ref)):
+            print(f'  ❌ {name}: 引用 {ref} 不存在')
+            all_good = False
+if all_good:
+    print('  所有 SKILL 资源引用存在 ✅')
+" 2>&1 || ERRORS=$((ERRORS + 1))
+
+# ---- 7. 权限契约一致性 ----
+# SKILL 中"产出/输出/写入"语境下声明的路径必须能被 opencode.json 的 write 权限覆盖
+echo ""
+echo "--- 权限契约一致性 ---"
+PERM_MISMATCH=$(.opencode/scripts/_perm_check.py 2>/dev/null || python3 -c "
+import json, os, re, fnmatch
+with open('$PROJECT_DIR/opencode.json') as f:
+    d = json.load(f)
+agents = d.get('agent', {})
+skills_dir = '$PROJECT_DIR/.opencode/skills'
+
+def covered(path, allow_patterns):
+    return any(fnmatch.fnmatch(path, pat) for pat in allow_patterns)
+
+issues = []
+for name, cfg in agents.items():
+    if cfg.get('mode') == 'primary':
+        continue
+    wp = cfg.get('permission', {}).get('write', {})
+    if wp == 'allow' or not isinstance(wp, dict):
+        continue
+    allow_pats = [p for p, v in wp.items() if v == 'allow']
+    skill_file = os.path.join(skills_dir, name, 'SKILL.md')
+    if not os.path.isfile(skill_file):
+        continue
+    content = open(skill_file).read()
+    # 产出语境：行内包含 输出/产出/写入/生成 关键词，且引用具体的 doc/ 或 src/ 文件路径
+    # 只匹配"以文件名结尾"的路径（xxx.md / xxx.py 等），目录引用（doc/detailed/）视为只读参考
+    for m in re.finditer(r'\`((?:doc|src|tests|frontend)/[^\s\`]+/[^\s\`]+\.[a-z]+)\`', content):
+        p = m.group(1)
+        if covered(p, allow_pats):
+            continue
+        line_start = content.rfind('\n', 0, m.start()) + 1
+        nxt = content.find('\n', m.start())
+        line = content[line_start:nxt if nxt != -1 else len(content)]
+        # 产出语境关键词；同时排除"禁止/不修改/只读/不改"等否定语境
+        if not re.search(r'输出|产出|写入|生成', line):
+            continue
+        if re.search(r'禁止|不修改|只读|不改|跳过', line):
+            continue
+        issues.append(f'  ⚠️  {name}: 产出声明 {p} 不在 write 白名单 {allow_pats}')
+for i in issues:
+    print(i)
+print(f'PERM_ISSUES={len(issues)}')
+" 2>&1)
+PERM_COUNT=$(echo "$PERM_MISMATCH" | grep -oE "PERM_ISSUES=[0-9]+" | cut -d= -f2)
+echo "$PERM_MISMATCH" | grep -vE "PERM_ISSUES=" || true
+if [ -z "$PERM_COUNT" ] || [ "$PERM_COUNT" -eq 0 ]; then
+  echo "  权限契约一致 ✅"
+else
+  echo "  ⚠️  检测到 $PERM_COUNT 处权限契约不一致（产出声明超出 write 白名单）"
+  WARNINGS=$((WARNINGS + 1))
+fi
 
 # ---- 汇总 ----
 echo ""

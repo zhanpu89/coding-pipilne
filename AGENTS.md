@@ -10,6 +10,7 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | `endpoint-lock.md` | **code-developer + orchestrator** | 全局 `instructions` 加载，端锁定规则；编排器走对齐流程时通知用户 |
 | `code-discipline.md` | **code-developer + tester** | 全局 `instructions` 加载，编码纪律 |
 | `doc-alignment.md` | **code-developer + code-reviewer** | 全局 `instructions` 加载，>DOC_SYNC 契约对齐 |
+| `arch-thinking.md` | **code-developer** | 全局 `instructions` 加载，编码前三关检查（查已有/定位置/验影响） |
 | `json-write-safety.md` | **所有写文件 agent** | 全局 `instructions` 加载 + SKILL.md 中按需引用；写入容错 |
 
 ## Scripts（`.opencode/scripts/`）
@@ -26,9 +27,10 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | `check-opencode.sh` | P5a/自举 | Pipeline 工具自验证：bash语法 + JSON格式 + SKILL结构 |
 | `check-prd.sh` | 1b | PRD 产出：文件大小 + 必备章节 + 技术术语检测 |
 | `check-review.sh` | 1c/2b/3b/5b/6b | 评审结论提取：支持表格/强调/纯文本/emoji 四种格式 |
-| `check-test.sh` | 6c | 测试执行：文件存在性 + 断言计数 + 报告结论检测 |
+| `check-test.sh` | 6c | 测试执行：文件存在性 + 断言计数 + 报告结论检测；**分级测试**：有 scope=T1 定向，无=T2 全量，同指纹缓存跳过 |
 | `check-testcase.sh` | 6a | 测试用例：文件存在性 + TC-ID 格式验证 + 类型分布统计 |
-| `log-skill.sh` | 全部 | Subagent 调用日志（JSON-Lines，ISO 时间戳） |
+| `log-skill.sh` | 全部 | Subagent 调用日志（JSON-Lines，ISO 时间戳）；编排器每 dispatch 后调用，供 self-evolve 分析 |
+| `log-feedback.sh` | 全部 | 用户反馈日志（纠正/吐槽/改向 verbatim + 严重度）；编排器每次收到用户纠正时调用，供 self-evolve 分析 |
 
 ## Conventions
 

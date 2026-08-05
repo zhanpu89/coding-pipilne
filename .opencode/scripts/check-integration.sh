@@ -25,10 +25,10 @@ ENDPOINTS=()
 SCOPE_SOURCE="默认（健康检查）"
 
 if [ -f "_MEMORY_CACHE.md" ]; then
-   SCOPE_LINE=$(grep -E "endpoints=" _MEMORY_CACHE.md 2>/dev/null | head -1)
+   # 格式兼容: ">>SCOPE: endpoints=X" (code-developer 标记) / "modules: X | endpoints: Y" (缓存模板) / "endpoints=X"
+   SCOPE_LINE=$(grep -oE '(endpoints[=:][^|#]+)' _MEMORY_CACHE.md 2>/dev/null | head -1)
    if [ -n "$SCOPE_LINE" ]; then
-     # 格式: >>SCOPE: endpoints=POST /api/orders/*,GET /api/orders/{id}
-     SCOPE_DATA=$(echo "$SCOPE_LINE" | sed 's/.*endpoints=//' | tr ',' '\n')
+     SCOPE_DATA=$(echo "$SCOPE_LINE" | sed -E 's/.*endpoints[=:]//' | tr ',' '\n')
      if [ -n "$SCOPE_DATA" ]; then
        while IFS= read -r ep; do
          ep=$(echo "$ep" | xargs)
@@ -37,8 +37,8 @@ if [ -f "_MEMORY_CACHE.md" ]; then
        SCOPE_SOURCE="_MEMORY_CACHE.md"
      fi
    fi
-   # Also read modules scope (for pure internal change detection)
-   SCOPE_MODULES=$(grep -oP '>>SCOPE:\s*modules?=\K[^#\n]+' _MEMORY_CACHE.md 2>/dev/null | head -1)
+   # Also read modules scope (for pure internal change detection) — 兼容 ">>SCOPE: modules=X" 和 "modules: X |"
+   SCOPE_MODULES=$(grep -oE '(modules[=:][^|#]+)' _MEMORY_CACHE.md 2>/dev/null | head -1 | sed -E 's/.*modules[=:]//' | tr ',' ' ')
  fi
 
 # scope 环境变量覆盖文件

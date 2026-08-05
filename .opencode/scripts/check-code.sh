@@ -210,7 +210,7 @@ fi
 echo ""
 echo "SCOPE 文件真实性验证:"
 if [ -f "_MEMORY_CACHE.md" ]; then
-  SCOPE_FILES=$(grep -oP '>>SCOPE:\s*files?=\K[^#\n]+' _MEMORY_CACHE.md 2>/dev/null | tr ',' '\n' | xargs)
+  SCOPE_FILES=$(grep -oE '(files[=:][^|#]+)' _MEMORY_CACHE.md 2>/dev/null | head -1 | sed -E 's/.*files[=:]//' | tr ',' '\n' | xargs)
   if [ -n "$SCOPE_FILES" ]; then
     MISSING=0
     for sf in $SCOPE_FILES; do

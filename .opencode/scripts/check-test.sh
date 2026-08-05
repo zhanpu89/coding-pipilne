@@ -27,6 +27,30 @@ PROJECT_TYPE="unknown"
 
 echo "项目类型: $PROJECT_TYPE"
 
+# ---- 解析 scope（从 _MEMORY_CACHE.md 或环境变量）----
+# 分级测试 T1 定向：有 modules scope → 只跑受影响模块测试 + 全局冒烟；无 → T2 全量
+SCOPE_MODULES=""
+SCOPE_SOURCE="无 scope（T2 全量）"
+
+if [ -f "_MEMORY_CACHE.md" ]; then
+  # 格式兼容: ">>SCOPE: modules=X,Y" / "modules: X | endpoints: Y" / "modules=X"
+  SCOPE_MODULES=$(grep -oE '(modules[=:][^|#]+)' _MEMORY_CACHE.md 2>/dev/null | head -1 | sed -E 's/.*modules[=:]//' | tr ',' ' ' | xargs)
+  [ -n "$SCOPE_MODULES" ] && SCOPE_SOURCE="_MEMORY_CACHE.md"
+fi
+
+# 环境变量覆盖（编排器可精确控制）
+if [ -n "$SCOPE_MODULES_ENV" ]; then
+  SCOPE_MODULES="$SCOPE_MODULES_ENV"
+  SCOPE_SOURCE="环境变量 SCOPE_MODULES_ENV"
+fi
+
+if [ -n "$SCOPE_MODULES" ]; then
+  echo "变更范围: 模块 [$SCOPE_MODULES]（来源: $SCOPE_SOURCE）"
+  echo "执行模式: T1 定向（受影响模块 + 全局冒烟）"
+else
+  echo "执行模式: T2 全量"
+fi
+
 # ---- 检查测试文件是否存在 ----
 echo ""
 echo "测试文件状态:"
@@ -93,17 +117,64 @@ run_test_and_count() {
 
 TEST_OUTPUT=""
 EXIT_CODE=0
+CACHE_HIT=false
 
+# ---- 全量/定向测试结果缓存（避免重复跑）----
+# 指纹 = scope 相关源码文件内容 hash。同指纹且上次通过 → 跳过重跑（Bug-fix 循环内反复调用的主要省时点）
+CACHE_DIR="/tmp/opencode/test-cache"
+CACHE_KEY=""
+FP=""
+if [ -n "$SCOPE_MODULES" ]; then
+  CACHE_KEY=$(echo "$SCOPE_MODULES" | tr ' ' '-' | tr -d '/\\')
+  SRC_TARGETS=""
+  for m in $SCOPE_MODULES; do
+    SRC_TARGETS="$SRC_TARGETS src/$m tests/test_${m}* tests/${m}"
+  done
+else
+  SRC_TARGETS="src tests"
+fi
+FP=$(find $SRC_TARGETS -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1)
+CACHE_FILE="$CACHE_DIR/test-${PROJECT_TYPE}-${CACHE_KEY:-full}.cache"
+
+if [ -n "$FP" ] && [ -f "$CACHE_FILE" ]; then
+  read -r cached_fp cached_result < "$CACHE_FILE" 2>/dev/null
+  if [ "$cached_fp" = "$FP" ] && [ "$cached_result" = "PASS" ]; then
+    CACHE_HIT=true
+    EXIT_CODE=0
+    echo "  🟢 缓存命中：源码指纹未变且上次通过，跳过重跑（如需强制刷新请删 $CACHE_FILE）"
+  fi
+fi
+
+if [ "$CACHE_HIT" = false ]; then
 case "$PROJECT_TYPE" in
   java)
     if [ -f "pom.xml" ] && command -v mvn &>/dev/null; then
       echo "  📦 Maven 测试..."
-      TEST_OUTPUT=$(mvn test -q 2>&1)
+      if [ -n "$SCOPE_MODULES" ]; then
+        # T1 定向：只跑受影响模块的测试类（通配符匹配模块名）
+        SCOPED_PATTERN=""
+        for m in $SCOPE_MODULES; do
+          SCOPED_PATTERN="${SCOPED_PATTERN:+$SCOPED_PATTERN,}*${m}*Test"
+        done
+        echo "    定向类: -Dtest=$SCOPED_PATTERN"
+        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" -Dsurefire.failIfNoSpecifiedTests=false 2>&1)
+      else
+        TEST_OUTPUT=$(mvn test -q 2>&1)
+      fi
       EXIT_CODE=$?
     elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
       if [ -f "gradlew" ]; then
         echo "  📦 Gradle 测试..."
-        TEST_OUTPUT=$(./gradlew test -q 2>&1)
+        if [ -n "$SCOPE_MODULES" ]; then
+          SCOPED_PATTERN=""
+          for m in $SCOPE_MODULES; do
+            SCOPED_PATTERN="${SCOPED_PATTERN:+$SCOPED_PATTERN,}*${m}*Test"
+          done
+          echo "    定向类: --tests \"$SCOPED_PATTERN\""
+          TEST_OUTPUT=$(./gradlew test --tests "$SCOPED_PATTERN" -q 2>&1)
+        else
+          TEST_OUTPUT=$(./gradlew test -q 2>&1)
+        fi
         EXIT_CODE=$?
       else
         echo "  ⚠️  gradlew 不可用，跳过测试"
@@ -118,7 +189,17 @@ case "$PROJECT_TYPE" in
   go)
     if command -v go &>/dev/null; then
       echo "  📦 Go test..."
-      TEST_OUTPUT=$(go test ./... -v 2>&1)
+      if [ -n "$SCOPE_MODULES" ]; then
+        # T1 定向：只跑受影响包的测试
+        GO_TARGETS=""
+        for m in $SCOPE_MODULES; do
+          GO_TARGETS="$GO_TARGETS ./$m/... ./internal/$m/..."
+        done
+        echo "    定向包: $GO_TARGETS"
+        TEST_OUTPUT=$(go test $GO_TARGETS -v 2>&1)
+      else
+        TEST_OUTPUT=$(go test ./... -v 2>&1)
+      fi
       EXIT_CODE=$?
     else
       echo "  ⚠️  go 不可用，跳过测试"
@@ -153,7 +234,12 @@ case "$PROJECT_TYPE" in
       fi
 
       # 优先用 package.json scripts.test
-      if grep -q '"test"' package.json 2>/dev/null; then
+      if [ -n "$SCOPE_MODULES" ] && [ -n "$TEST_FRAMEWORK" ]; then
+        # T1 定向：只跑受影响模块的测试（框架原生路径过滤）
+        echo "    定向模块: $SCOPE_MODULES"
+        TEST_OUTPUT=$(npx "$TEST_FRAMEWORK" run $SCOPE_MODULES 2>&1)
+        EXIT_CODE=$?
+      elif grep -q '"test"' package.json 2>/dev/null; then
         echo "    运行 npm test..."
         TEST_OUTPUT=$(npm test 2>&1)
         EXIT_CODE=$?
@@ -183,7 +269,31 @@ case "$PROJECT_TYPE" in
 
   python|polyglot)
     echo "  📦 Python 测试..."
-    if command -v pytest &>/dev/null; then
+    if [ -n "$SCOPE_MODULES" ]; then
+      # T1 定向：只跑受影响模块的测试 + 全局冒烟（test_health/test_smoke 必有）
+      # 只收集存在的目标，避免 pytest 因路径不存在而报错
+      SCOPED_TARGETS=""
+      for m in $SCOPE_MODULES; do
+        for cand in tests/test_${m}*.py tests/${m}/; do
+          [ -e "$cand" ] && SCOPED_TARGETS="$SCOPED_TARGETS $cand"
+        done
+      done
+      for cand in tests/test_health.py tests/test_smoke*.py; do
+        [ -e "$cand" ] && SCOPED_TARGETS="$SCOPED_TARGETS $cand"
+      done
+      echo "    定向目标: $SCOPED_TARGETS"
+      if command -v pytest &>/dev/null; then
+        TEST_OUTPUT=$(pytest -v $SCOPED_TARGETS 2>&1)
+      elif command -v python3 &>/dev/null; then
+        TEST_OUTPUT=$(python3 -m pytest -v $SCOPED_TARGETS 2>&1)
+      elif command -v python &>/dev/null; then
+        TEST_OUTPUT=$(python -m pytest -v $SCOPED_TARGETS 2>&1)
+      else
+        echo "  ⚠️  pytest 不可用，跳过测试执行"
+        EXIT_CODE=2
+      fi
+      EXIT_CODE=$?
+    elif command -v pytest &>/dev/null; then
       echo "    pytest..."
       TEST_OUTPUT=$(pytest -v 2>&1)
       EXIT_CODE=$?
@@ -214,7 +324,16 @@ case "$PROJECT_TYPE" in
     # polyglot 的 Java 部分
     if [ -f "pom.xml" ] && command -v mvn &>/dev/null; then
       echo "  📦 Maven 测试（polyglot 的 Java 部分）..."
-      TEST_OUTPUT=$(mvn test -q 2>&1)
+      if [ -n "$SCOPE_MODULES" ]; then
+        SCOPED_PATTERN=""
+        for m in $SCOPE_MODULES; do
+          SCOPED_PATTERN="${SCOPED_PATTERN:+$SCOPED_PATTERN,}*${m}*Test"
+        done
+        echo "    定向类: -Dtest=$SCOPED_PATTERN"
+        TEST_OUTPUT=$(mvn test -q -Dtest="$SCOPED_PATTERN" -Dsurefire.failIfNoSpecifiedTests=false 2>&1)
+      else
+        TEST_OUTPUT=$(mvn test -q 2>&1)
+      fi
       EXIT_CODE=$?
     elif [ -f "package.json" ] && command -v npx &>/dev/null; then
       echo "  📦 npm test（polyglot 的 Node 部分）..."
@@ -226,6 +345,7 @@ case "$PROJECT_TYPE" in
     fi
     ;;
 esac
+fi # CACHE_HIT=false
 
 # ---- 解析测试结果 ----
 if [ "$EXIT_CODE" -eq 2 ]; then
@@ -239,6 +359,12 @@ if [ "$EXIT_CODE" -eq 2 ]; then
 elif [ "$EXIT_CODE" -eq 0 ]; then
   echo ""
   echo "✅ 测试全部通过"
+  # 记录缓存（供下次同指纹跳过）
+  if [ "$CACHE_HIT" = false ] && [ -n "$FP" ]; then
+    mkdir -p "$CACHE_DIR"
+    echo "$FP PASS" > "$CACHE_FILE"
+    echo "  📦 已缓存测试结果（指纹 $FP）"
+  fi
   TESTS_PASSED=1
 else
   echo ""

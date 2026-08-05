@@ -2,22 +2,43 @@
 # 检查评审报告结论
 # 标准退出码：0=通过(✅)，1=有条件(⚠️)，2=阻断(❌)
 # 输出: 结论文本
+# 用法: check-review.sh [--name PATTERN]  — PATTERN 过滤目标报告（如 "代码评审"/"需求评审"），
+#        否则取最新报告。多 Phase 累积报告时必须传 --name 精确定位本 Phase 的评审报告。
 
 REVIEW_DIR="doc/review"
+NAME_FILTER=""
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --name)
+      NAME_FILTER="$2"
+      shift 2
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
 
 if [ ! -d "$REVIEW_DIR" ]; then
   echo "❌ 评审目录不存在"
   exit 2
 fi
 
-# 找最新的评审报告（支持多种命名模式）
-LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -printf '%T@ %p\0' 2>/dev/null | sort -rnz | head -1 | cut -d' ' -f2- | tr -d '\0')
+# 带 name 过滤时按过滤条件找，否则取最新报告
+# 注意：find -printf '\0' + sort -z + head 无法正确处理（head 按换行读），先 tr NUL 为换行再排序
+if [ -n "$NAME_FILTER" ]; then
+  LATEST=$(find "$REVIEW_DIR" -type f -name "*$NAME_FILTER*" -printf '%T@ %p\0' 2>/dev/null | tr '\0' '\n' | sort -rn | head -1 | cut -d' ' -f2-)
+  [ -n "$LATEST" ] && echo "报告(按 $NAME_FILTER 过滤): $(basename "$LATEST")"
+else
+  LATEST=$(find "$REVIEW_DIR" -type f \( -name "*评审报告*" -o -name "*review*" -o -name "*报告*" \) -printf '%T@ %p\0' 2>/dev/null | tr '\0' '\n' | sort -rn | head -1 | cut -d' ' -f2-)
+  [ -n "$LATEST" ] && echo "报告: $(basename "$LATEST")"
+fi
+
 if [ -z "$LATEST" ]; then
   echo "❌ 未找到评审报告"
   exit 2
 fi
-
-echo "报告: $(basename "$LATEST")"
 
 # ---- 提取评审结论 ----
 # 支持多种格式:
