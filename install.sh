@@ -46,8 +46,6 @@ ok "rules/ ($(find "$OPTDST/rules" -name '*.md' | wc -l) rules)"
 # .gitignore
 cp "$OPTSRC/.gitignore" "$OPTDST/" 2>/dev/null || true
 
-# .opencode/README.md
-cp "$OPTSRC/README.md" "$OPTDST/" 2>/dev/null || true
 
 # commands/（OpenCode 自动发现）
 cp -r "$OPTSRC/commands" "$OPTDST/" 2>/dev/null || info "commands/ 不存在，跳过"
