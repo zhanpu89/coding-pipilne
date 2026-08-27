@@ -96,10 +96,10 @@ SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
 [ "$SKILL_COUNT" -eq 9 ] && ok "$SKILL_COUNT/9 skills" || info "skills: $SKILL_COUNT/9（预期 9）"
 
 RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
-[ "$RULE_COUNT" -eq 5 ] && ok "$RULE_COUNT/5 rules" || info "rules: $RULE_COUNT/5"
+[ "$RULE_COUNT" -eq 6 ] && ok "$RULE_COUNT/6 rules" || info "rules: $RULE_COUNT/6"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 13 ] && ok "$SCRIPT_COUNT/13 scripts" || info "scripts: $SCRIPT_COUNT/13（预期 13）"
+[ "$SCRIPT_COUNT" -eq 15 ] && ok "$SCRIPT_COUNT/15 scripts" || info "scripts: $SCRIPT_COUNT/15（预期 15）"
 
 # check-opencode.sh 必须可执行（自举门禁需要）
 if [ -x "$TARGET/.opencode/scripts/check-opencode.sh" ]; then
