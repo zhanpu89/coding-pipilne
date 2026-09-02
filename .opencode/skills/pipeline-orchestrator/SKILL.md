@@ -43,11 +43,11 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 | 影响范围 | 强度 | Phase 序列 |
 |----------|------|-----------|
-| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位 → **P5a** → **P5b** → P6d |
-| 同模块前后端，无 DDL，无新增 API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7a → P7b |
-| 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b** → **P6c** → P6d → P7a → P7b |
-| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b |
-| 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b |
+| 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位 → **P5a** → **P5b** → P6d → **P8** |
+| 同模块前后端，无 DDL，无新增 API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7a → P7b → **P8** |
+| 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b** → **P6c** → P6d → P7a → P7b → **P8** |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b → **P8** |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b → **P8** |
 | 纯信息查询 | — | 直接回答，不触发 pipeline |
 
 > **粗体 = subagent 执行，普通 = 主 agent 执行**（主 agent 不直接修改文件，由 `edit:deny` 强制执行。P6d curl 验证属验收环节，主 agent 直接执行。）
@@ -81,6 +81,14 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 
 **硬性熔断：** 每次收到用户负面反馈（纠正/吐槽/改向），调用 `log-feedback.sh` 是本会话的**不可跳过步骤**，等同门禁。最终清理前运行 `bash .opencode/scripts/check-feedback.sh` —— 若本会话确有反馈却未写入（exit 2），视为违规，需补记后再交付。这条规则的目的：把"采集靠自觉"变成"采集可验证"，防止 self-evolve 因数据源为空而死锁。
 
+**🔴 P8 对抗性盲审（pipeline 终点前的最终门禁）：** 所有 Phase 通过后、最终清理前**强制执行**一次"坏假设"审查。全部 5 档强度（🐛/🟢-light/🟢/🟡/🔴）的序列末尾都有 `→ **P8**`，不可跳过。
+- 由**独立 `code-reviewer`** 执行（入参含 `>>MODE: blind`），零上下文启动——**只含**需求原文路径 + 改动文件路径列表 + `_MEMORY_CACHE.md`【变更范围】。**禁止携带** P5b 评审报告、P6c 测试报告、P6d 集成报告、任何中间产物或创作推理。
+- **Prompt 逆向引导：** 不验证"做对了没"，而是"假设一定有 Bug，找出来"。至少找出 3 个独立问题（P0/P1/P2），否则说明审查不够严格。见 Phase 详解 P8 的 prompt 模板。
+- **需求原文界定（修复型流水线）：** 无 PRD/详设的修复/评审修复场景，"需求原文"= 触发本次修复的评审报告/用户请求原文路径（不含评审批注与修订标记）。禁止把中间修复轮次的评审报告当需求原文。
+- **P0 阻断回退：** P8 发现 P0 → 走 Bug-fix Loop（回退 P5a 修复）→ 重走 P5b → P6c(T1 定向) → 再次 P8。**连续 2 轮 P8 发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户**（防死循环）。
+- **P1/P2 不阻断：** 记录到 `_MEMORY_CACHE.md`【P8 未阻塞问题】，等用户决策。
+- **修复轮精简（EP-4）：** P8 发现的 P0/P1 修复后**只重走 code-developer → code-reviewer(P5b) → P6c(T1 定向) → P8**，不重走 P6d/P7a/P7b——文档同步在第一轮已做过；若修复确实改变契约字段/端点才需补 P7a/P7b，编排器判断。修复轮不重开 Phase 计数，复用原 Phase 号加 `-rN`。
+
 **OODA 反思（每 Phase 终了执行）：**
 
 | 反思问题 | 触发条件 | 行动 |
@@ -112,6 +120,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | 6d 集成验证 | **主 agent** | `doc/tester/integration-report.md` |
 | P7a 漂移检测 | `code-reviewer`（入参含 `>>MODE: drift` + 变更范围） | 漂移报告 |
 | P7b 契约同步 | 按漂移类型 dispatch doc agent（task-decomposer/system-architect/prd-writer） | 文档更新 |
+| P8 对抗性盲审 | `code-reviewer`（入参含 `>>MODE: blind` + 需求原文路径 + 改动文件 + 变更范围） | 盲审报告 |
 
 > 裁剪上下文和记忆检索参考 `resources/retrieval-strategy.md`。决策记录质量参考 `resources/decision-quality.md`。
 
@@ -138,7 +147,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 收到 >>PROJECT: 异常 → 统一全局拦截器          → mirror-log.sh "异常与错误处理" "统一全局拦截器"
 ```
 
-**Bug-fix Loop（P6c/P6d 发现 Bug → 回退 P5a）：**
+**Bug-fix Loop（P6c/P6d/P8 发现 Bug → 回退 P5a）：**
 
 ```
 记录 Bug 清单 → dispatch code-developer 修复 → **P5b 代码评审** → T1 定向回归（只跑该模块测试）
@@ -147,6 +156,8 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 ```
 
 > **每轮只跑 T1 定向，不要每修一个 Bug 就全量一遍。** 全量只在 Bug 清零时收尾跑一次。这样"fix 一次全量一遍"变成"fix N 次 + 收尾 1 次全量"。
+>
+> **P8 触发路径精简（EP-4）：** 若 Bug 来自 P8（而非 P6c/P6d）且修复不改变契约字段/端点 → 走精简回路 `P5a → P5b → P6c(T1 定向) → 再次 P8`，**不重走** P6d/P7a/P7b。修复轮复用原 Phase 号加 `-rN`，不重开 Phase 计数。修复确改变契约时，编排器判断是否需要补 P7a/P7b。连续 2 轮 P8 仍发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户。
 
 **自适应恢复：**
 
@@ -157,6 +168,8 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | 🅲 产出质量差 | 重读需求 → 调 prompt → 重执行 |
 | 🅳 死循环(2次同质失败) | 暂停 → 搜历史换策略 → 不行则报告用户 |
 | 🅴🅵 测试/Bug | 走 Bug-fix Loop |
+| 🅶 P8 发现 P0 | 走 Bug-fix Loop（P8 精简回路：P5a → P5b → P6c T1 → 再次 P8），连续 2 轮 P0 → 报告用户 |
+| 🅷 P8 发现 P1/P2 | 记录到 `_MEMORY_CACHE.md`【P8 未阻塞问题】，不阻断，等用户决策 |
 
 **评估产出：门禁通过 ≠ 质量过关**
 
@@ -192,6 +205,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P7a | `bash .opencode/scripts/check-drift.sh` |
 | 评审 1b/2b/3b/5b/6b | `bash .opencode/scripts/check-review.sh --name {需求/架构/详细设计/代码/测试用例}评审` |
 | P7b | 按漂移表 dispatch doc agent 同步后，跑对应门禁（见下方漂移表） |
+| P8 对抗性盲审 | `bash .opencode/scripts/check-review.sh --name 对抗性盲审`（验证盲审报告已产出） |
 
 **文档同步 / P7b 漂移表（doc 类型 → subagent → 门禁，一处定义多处用）：**
 
@@ -208,6 +222,36 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | 需求 | `prd-writer` | `doc/prd/*.md` | `bash .opencode/scripts/check-prd.sh` |
 - Phase 前：`bash .opencode/scripts/check-audit.sh snapshot {Phase}`
 - Phase 后：`bash .opencode/scripts/check-audit.sh verify {Phase}`
+
+### P8 对抗性盲审（Phase 详解）
+
+pipeline 终点前（P7b 之后）、最终清理之前的**最后一关**。目的：打破编排器与全体评审的思维定式——在正常审查全部通过后，假设"中间一定有什么被漏了"，用逆向视角重扫一遍。
+
+**执行者：** 独立 `code-reviewer` subagent，入参含 `>>MODE: blind` 标记。
+
+**零上下文约束（编排器 dispatch 前必须裁剪）：** 入参**只含**：
+1. 需求原文路径（`doc/detailed/*.md` 中最原始版本 / 无详设时=触发修复的评审报告或用户请求原文，不含评审批注与修订标记）
+2. 改动文件路径列表
+3. `_MEMORY_CACHE.md`【变更范围】（聚焦检查范围）
+
+**禁止携带：** P5b 评审报告、P6c 测试报告、P6d 集成验证报告、任何 Phase 的中间推理或设计决策理由。
+
+**Prompt 逆向引导（code-reviewer prompt 关键段）：**
+
+```
+你是一个对抗性审查者。你的任务不是验证代码是否正确，而是假设它一定有问题。
+——你看到的只有：需求原文 {path}、改动文件 {files}、变更范围 {scope}。
+——你不知道设计决策理由、不知道之前的审查结论、不知道测试是否通过。
+——找出至少 3 个独立的问题（P0/P1/P2），否则说明你的审查不够严格。
+格式：每个问题一行 【P等级】文件:行号: 问题描述
+```
+
+**分级处理：**
+- P0 → 阻断，走 Bug-fix Loop（回退 P5a → P5b → P6c T1 定向 → 再次 P8）
+- P1/P2 → 不阻断，记录到 `_MEMORY_CACHE.md`【P8 未阻塞问题】，等用户决策
+- 连续 2 轮 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户
+
+**修复轮精简（EP-4）：** P8 修复只重走 `P5a → P5b → P6c(T1) → P8`，不重走 P6d/P7a/P7b。修复轮复用原 Phase 号加 `-rN`。
 
 ## 上下文管理
 
@@ -229,6 +273,9 @@ modules: ... | endpoints: ...
 
 【Bug 清单】（Bug-fix Loop 时注入）
 - BUG-001: ... | 状态: ...
+
+【P8 未阻塞问题】（P8 发现 P1/P2 时注入，等用户决策）
+- P1: ... | ...
 ```
 
 编排器在裁剪上下文时只保留此文件 + 本 Phase 指令。subagent 只读不写此文件。
@@ -241,4 +288,7 @@ modules: ... | endpoints: ...
 
 ## 最终清理
 
-`update_summary(completed)` → `check-audit.sh clean` → 删临时文件 → 输出产出物汇总
+1. **P8 对抗性盲审**（若序列含 P8）→ 通过（无 P0）或按 🅶/🅷 处理
+2. `update_summary(completed)` → `check-audit.sh clean` → 删临时文件 → 输出产出物汇总
+
+若 P8 发现非阻断问题，在摘要中注明：`⚡ P8 对抗性审查发现 {N} 个非阻断问题: {列举}`
