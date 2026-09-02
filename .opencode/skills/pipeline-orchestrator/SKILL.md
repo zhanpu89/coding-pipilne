@@ -132,6 +132,8 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 - 示例 prompt 片段：`本次变更 diff 摘要: {stat}; 变更文件: {name-only}; SIDE-EFFECT 清单: {sides}; 请重点评审: {关键文件}`
 
 > 预取是**编排器职责**，不是评审 agent 的。评审 agent 只做审查判断，不做代码探索——diff 已在 prompt 里，判断即可，无需自己 `git diff`/`grep` 探索。
+>
+> **并行分组时的预取隔离：** 并行修复了 N 组 Bug、P5b 也并行 N 个评审时，**每个评审的 diff 预取用 `git diff -- <该组文件路径>` 缩小到自己负责的组**（只取本组变更，不拿全量），配合 `>>SCOPE:` 限定职责边界，防止评审者被别组变更干扰或跨组互评。
 
 **评审隔离：** 每个产出 Phase 后紧跟对应评审 Phase。评审用**全新 subagent**，入参只含被评文件 + 参考契约，不携带创作上下文。
 
@@ -172,6 +174,8 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 > **每轮只跑 T1 定向，不要每修一个 Bug 就全量一遍。** 全量只在 Bug 清零时收尾跑一次。这样"fix 一次全量一遍"变成"fix N 次 + 收尾 1 次全量"。
 >
 > **并行修复后的评审同样并行：** 并行修复了 N 组 Bug 时，**P5b 同步并行 dispatch N 个 code-reviewer**，每个只评一个修复组的文件（`>>SCOPE:` 限定），再各自跑对应模块的 T1 回归。全部评审/回归通过才进 T2 收尾。这样"并行修 + 并行评 + 并行测"，不回流串行。**并行度上限 3 同样约束评审/回归**（N>3 时分组不超 3，P5b 也分批并行）。
+>
+> **并行分组的 T1 回归：** 各组评审通过后，**P6c 的 T1 把各组合并成一份 scope**（`modules=A,B` 合并写回 `_MEMORY_CACHE.md` 全局 scope）跑一次定向回归——指纹缓存按合并后 key 生效，一次覆盖所有受影响模块。不必按组各跑（避免重复编译/重复冒烟），全部通过才进 T2 收尾。
 >
 > **修复副作用审计（每个修复轮强制，防"修好一个引入另一个"）：** 修复是最容易产生新 Bug 的时机——改了判断条件就影响相邻分支，改了数据流就影响下游消费者。**code-developer 修复返回后必须输出 `>>SIDE-EFFECT: {文件}:{影响点} → {行为变化}` 标记**（列出这次修复改变了哪些既有行为，不只是声明修好了什么）。编排器据此：
 > - **P5b 评审入参追加** `>>SIDE-EFFECT:` 清单 → 让 code-reviewer 逆向假设"这些受影响点哪里被改坏了"
@@ -223,7 +227,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P6a | `bash .opencode/scripts/check-testcase.sh` |
 | P6c | `bash .opencode/scripts/check-test.sh`（T1 定向：有 `>>SCOPE: modules=` 时只跑受影响模块+冒烟；无则 T2 全量；同指纹自动缓存跳过） |
 | P6d | `bash .opencode/scripts/check-integration.sh` |
-| P7a | 随 5b（评审报告含漂移节；仍以 `check-review.sh --name 代码评审` 门禁） |
+| P7a | 随 5b（评审报告含漂移节作为内容输入）：先跑 `bash .opencode/scripts/check-drift.sh`（客观：规范文档完整性/P7 同步记录/增量架构合规），再读评审报告漂移节确认无主观遗漏 |
 | 评审 1b/2b/3b/5b/6b | `bash .opencode/scripts/check-review.sh --name {需求/架构/详细设计/代码/测试用例}评审` |
 | P7b | 按漂移表 dispatch doc agent 同步后，跑对应门禁（见下方漂移表） |
 | P8 对抗性盲审 | `bash .opencode/scripts/check-review.sh --name 对抗性盲审`（验证盲审报告已产出） |

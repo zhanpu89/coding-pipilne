@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # 检查 P7 全局漂移检测产出物
-# P7a: 验证 code-reviewer 漂移报告已生成
+# P7a: 验证 P5b 评审报告漂移节（review+drift 模式）或独立 drift-report.md 已生成
 # P7b: 验证 doc agent 已同步契约文档
+# 用法: check-drift.sh [评审报告路径]
 # 退出码: 0=无漂移/已修复, 1=漂移存在或报告缺失
 
 PROJECT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -11,20 +12,37 @@ ERRORS=0
 
 echo "=== P7 全局漂移检测 ==="
 
-# ---- 0. 漂移报告检查（P7a 产出物） ----
+# ---- 0. 漂移检测来源（P7a 产出物）----
 echo ""
-echo "--- 漂移报告 ---"
-DRIFT_REPORT="$PROJECT_DIR/doc/tester/drift-report.md"
-if [ -f "$DRIFT_REPORT" ]; then
-  if grep -q "✅ 无漂移" "$DRIFT_REPORT" 2>/dev/null; then
+echo "--- 漂移检测 ---"
+# 优先级: 命令行传入评审报告 > 旧版独立漂移报告 > 自动查找最新评审报告
+REVIEW_REPORT="${1:-}"
+if [ -z "$REVIEW_REPORT" ] && [ ! -f "$PROJECT_DIR/doc/tester/drift-report.md" ]; then
+  REVIEW_REPORT=$(ls -t ${PROJECT_DIR}/doc/review/*_代码评审.md 2>/dev/null | head -1)
+fi
+DRIFT_SOURCE="$REVIEW_REPORT"
+[ -z "$DRIFT_SOURCE" ] && [ -f "$PROJECT_DIR/doc/tester/drift-report.md" ] && DRIFT_SOURCE="$PROJECT_DIR/doc/tester/drift-report.md"
+
+if [ -n "$DRIFT_SOURCE" ]; then
+  # 提取评审报告漂移节内容
+  if grep -q "## 漂移检测" "$DRIFT_SOURCE" 2>/dev/null; then
+    DRIFT_SECTION=$(awk '/^## 漂移检测/{flag=1;next} /^## /{if(flag) exit} flag' "$DRIFT_SOURCE" 2>/dev/null)
+    if echo "$DRIFT_SECTION" | grep -q "✅ 无漂移"; then
+      echo "  ✅ 评审报告漂移节确认：无漂移"
+    else
+      DRIFT_COUNT=$(echo "$DRIFT_SECTION" | grep -c "漂移\|不匹配\|缺失" 2>/dev/null || echo 0)
+      echo "  ⚠️  评审报告漂移节发现 $DRIFT_COUNT 处漂移"
+      [ "$DRIFT_COUNT" -gt 0 ] && ERRORS=$((ERRORS + DRIFT_COUNT))
+    fi
+  elif grep -q "✅ 无漂移" "$DRIFT_SOURCE" 2>/dev/null; then
     echo "  ✅ 漂移报告确认：无漂移"
   else
-    DRIFT_COUNT=$(grep -c "漂移\|不匹配\|缺失" "$DRIFT_REPORT" 2>/dev/null || echo 0)
+    DRIFT_COUNT=$(grep -c "漂移\|不匹配\|缺失" "$DRIFT_SOURCE" 2>/dev/null || echo 0)
     echo "  ⚠️  漂移报告存在，发现 $DRIFT_COUNT 处漂移"
     ERRORS=$((ERRORS + DRIFT_COUNT))
   fi
 else
-  echo "  ℹ️  无漂移报告（跳过 P7a 验证）"
+  echo "  ℹ️  未找到漂移节/漂移报告（跳过 P7a 内容校验，仍执行客观校验）"
 fi
 
 # ---- 1. 架构漂移检测 ----
