@@ -46,6 +46,9 @@ ok "rules/ ($(find "$OPTDST/rules" -name '*.md' | wc -l) rules)"
 # .gitignore
 cp "$OPTSRC/.gitignore" "$OPTDST/" 2>/dev/null || true
 
+# tsconfig.json（OpenCode 在 .opencode/ 内的 TS 类型检查配置，随工具交付）
+cp "$OPTSRC/tsconfig.json" "$OPTDST/" 2>/dev/null || true
+
 
 # commands/（OpenCode 自动发现）
 cp -r "$OPTSRC/commands" "$OPTDST/" 2>/dev/null || info "commands/ 不存在，跳过"
@@ -94,6 +97,7 @@ echo -e "${CYAN}── 验证 ──${NC}"
 ERRORS=0
 
 [ -f "$TARGET/opencode.json" ] && ok "opencode.json" || { fail "opencode.json 缺失"; ERRORS=$((ERRORS+1)); }
+[ -f "$TARGET/.opencode/tsconfig.json" ] && ok ".opencode/tsconfig.json" || { fail ".opencode/tsconfig.json 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/skills" ] && ok ".opencode/skills/" || { fail ".opencode/skills/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/scripts" ] && ok ".opencode/scripts/" || { fail ".opencode/scripts/ 缺失"; ERRORS=$((ERRORS+1)); }
 [ -d "$TARGET/.opencode/rules" ] && ok ".opencode/rules/" || { fail ".opencode/rules/ 缺失"; ERRORS=$((ERRORS+1)); }
