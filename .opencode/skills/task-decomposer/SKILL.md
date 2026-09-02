@@ -45,7 +45,7 @@ description: |
 | 规则五 | 异步流程（任务状态查询+死信） |
 | 规则六 | 权限与数据隔离 |
 
-输出推导报告 → 用户确认 → 锁定接口清单。**确认前禁止 Step 3**。
+输出推导报告（含待确认的补充接口清单）→ 更新 `_PROGRESS.md` 标记 `⏳ 待用户确认` → 停止。**确认前禁止 Step 3**。确认由编排器转交用户，确认后再次 dispatch 你（恢复 `_PROGRESS.md` 读取已锁定的接口清单）才进入 Step 3。
 
 **Step 3：** 加载 `templates/backend-detailed.md`。每文档 13 节。第 3 节必须是 `yaml` 代码块含 requestBody/responses/错误码。一次只生成一份，写入 `doc/detailed/{模块}_详细设计.md`。
 
