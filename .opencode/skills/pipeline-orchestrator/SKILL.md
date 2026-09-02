@@ -44,10 +44,10 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 | 影响范围 | 强度 | Phase 序列 |
 |----------|------|-----------|
 | 单文件/单层，无接口无数据变更 | 🐛 **轻量** | 定位 → **P5a** → **P5b** → P6d → **P8** |
-| 同模块前后端，无 DDL，无新增 API | 🟢-light **轻标准** | **P5a** → **P5b** → **P6c** → P6d → P7a → P7b → **P8** |
-| 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b** → **P6c** → P6d → P7a → P7b → **P8** |
-| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b → **P8** |
-| 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b** → **P6a** → **P6b** → **P6c** → P6d → P7a → P7b → **P8** |
+| 同模块前后端，无 DDL，无新增 API | 🟢-light **轻标准** | **P5a** → **P5b**(含P7a) → **P6c** → P6d → P7b → **P8** |
+| 同模块前后端，无 DDL | 🟢 **标准** | **P3a** → **P3b** → **P5a** → **P5b**(含P7a) → **P6c** → P6d → P7b → **P8** |
+| 有 DDL 或新增子模块 | 🟡 **增量** | **P3a** → **P3b** → **P5a** → **P5b**(含P7a) → **P6a** → **P6b** → **P6c** → P6d → P7b → **P8** |
+| 全新项目/跨模块重构 | 🔴 **全量** | **P1a** → **P1b** → **P1c** → **P2a** → **P2b** → **P3a** → **P3b** → **P5a** → **P5b**(含P7a) → **P6a** → **P6b** → **P6c** → P6d → P7b → **P8** |
 | 纯信息查询 | — | 直接回答，不触发 pipeline |
 
 > **粗体 = subagent 执行，普通 = 主 agent 执行**（主 agent 不直接修改文件，由 `edit:deny` 强制执行。P6d curl 验证属验收环节，主 agent 直接执行。）
@@ -87,7 +87,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 - **需求原文界定（修复型流水线）：** 无 PRD/详设的修复/评审修复场景，"需求原文"= 触发本次修复的评审报告/用户请求原文路径（不含评审批注与修订标记）。禁止把中间修复轮次的评审报告当需求原文。
 - **P0 阻断回退：** P8 发现 P0 → 走 Bug-fix Loop（回退 P5a 修复）→ 重走 P5b → P6c(T1 定向) → 再次 P8。**连续 2 轮 P8 发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户**（防死循环）。
 - **P1/P2 不阻断：** 记录到 `_MEMORY_CACHE.md`【P8 未阻塞问题】，等用户决策。
-- **修复轮精简（EP-4）：** P8 发现的 P0/P1 修复后**只重走 code-developer → code-reviewer(P5b) → P6c(T1 定向) → P8**，不重走 P6d/P7a/P7b——文档同步在第一轮已做过；若修复确实改变契约字段/端点才需补 P7a/P7b，编排器判断。修复轮不重开 Phase 计数，复用原 Phase 号加 `-rN`。
+- **修复轮精简（EP-4）：** P8 发现的 P0/P1 修复后**只重走 code-developer → code-reviewer(P5b，自带 P7a 漂移节) → P6c(T1 定向) → P8**，不重走 P6d/P7b——文档同步在第一轮已做过；若修复确需补充契约同步才走 P7b，由编排器判断。修复轮不重开 Phase 计数，复用原 Phase 号加 `-rN`。修复轮里 **P7a 不再单列**（已含在 5b）；**首次完整流程**仍带 P7a（即 5b 评审报告在 🟢-light 以上强度含漂移节）。
 
 **OODA 反思（每 Phase 终了执行）：**
 
@@ -118,11 +118,20 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | 6b 用例评审 | `review-expert` | 评审报告 |
 | 6c 测试执行 | `tester(阶段二)` | 测试结果报告 |
 | 6d 集成验证 | **主 agent** | `doc/tester/integration-report.md` |
-| P7a 漂移检测 | `code-reviewer`（入参含 `>>MODE: drift` + 变更范围） | 漂移报告 |
+| P7a 漂移检测 | 随 5b 合并（`code-reviewer` 入参 `>>MODE: review+drift`，评审报告同屏输出漂移节；特殊情况才独立发 `>>MODE: drift`） | 评审报告含漂移节 |
 | P7b 契约同步 | 按漂移类型 dispatch doc agent（task-decomposer/system-architect/prd-writer） | 文档更新 |
 | P8 对抗性盲审 | `code-reviewer`（入参含 `>>MODE: blind` + 需求原文路径 + 改动文件 + 变更范围） | 盲审报告 |
 
 > 裁剪上下文和记忆检索参考 `resources/retrieval-strategy.md`。决策记录质量参考 `resources/decision-quality.md`。
+
+**评审类 dispatch 预取（P5b/P8 及其他 code-reviewer dispatch 前必做，省冷启动探索）：** 主 agent 先在本地快速收集以下信息，内联进 dispatch prompt，让评审者**不用自己跑 git diff / 全库搜索**：
+- `git diff --stat`（本次变更文件+行数摘要）
+- `git diff --name-only`（变更文件列表，含新增/删除/修改）
+- subagent 输出的 `>>SIDE-EFFECT:` / `>>SCOPE:` 清单（有则带上；无标记时提示"无 SIDE-EFFECT 标记，请按 git diff 推断受影响点"）
+- 受影响文件路径（变更文件中**业务逻辑密集**的 1-3 个，重点评审）
+- 示例 prompt 片段：`本次变更 diff 摘要: {stat}; 变更文件: {name-only}; SIDE-EFFECT 清单: {sides}; 请重点评审: {关键文件}`
+
+> 预取是**编排器职责**，不是评审 agent 的。评审 agent 只做审查判断，不做代码探索——diff 已在 prompt 里，判断即可，无需自己 `git diff`/`grep` 探索。
 
 **评审隔离：** 每个产出 Phase 后紧跟对应评审 Phase。评审用**全新 subagent**，入参只含被评文件 + 参考契约，不携带创作上下文。
 
@@ -155,14 +164,21 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 → 是 → T2 全量回归（一次收尾确认，防止定向盲区）→ 有 DOC_SYNC？→ 同步契约 → 继续
 ```
 
+> **⚠️ 并行修复（Bug-fix Loop 提速第一步）：** code-developer 修复前，先按**变更文件归属模块**把 Bug 清单分组。**属于不同模块、无共享文件依赖的 Bug 组并行 dispatch 多个 code-developer**（同一模块的 Bug 仍合并在一个 agent）。并行组数上限 3，防止上下文过载。
+> - 每个并行 agent 的 prompt **指明各自负责的 Bug 组 + 明确"禁止改其他组的文件"**（文件级隔离，靠 prompt 声明约束）
+> - 全部并行 agent 返回后统一收集 `>>SCOPE:` + `>>FIXED:` + `>>SIDE-EFFECT:`，再进 P5b 评审和 T1 回归
+> - 判定非独立（共享文件/同模块）时**不并行**，退回串行合并
+
 > **每轮只跑 T1 定向，不要每修一个 Bug 就全量一遍。** 全量只在 Bug 清零时收尾跑一次。这样"fix 一次全量一遍"变成"fix N 次 + 收尾 1 次全量"。
+>
+> **并行修复后的评审同样并行：** 并行修复了 N 组 Bug 时，**P5b 同步并行 dispatch N 个 code-reviewer**，每个只评一个修复组的文件（`>>SCOPE:` 限定），再各自跑对应模块的 T1 回归。全部评审/回归通过才进 T2 收尾。这样"并行修 + 并行评 + 并行测"，不回流串行。**并行度上限 3 同样约束评审/回归**（N>3 时分组不超 3，P5b 也分批并行）。
 >
 > **修复副作用审计（每个修复轮强制，防"修好一个引入另一个"）：** 修复是最容易产生新 Bug 的时机——改了判断条件就影响相邻分支，改了数据流就影响下游消费者。**code-developer 修复返回后必须输出 `>>SIDE-EFFECT: {文件}:{影响点} → {行为变化}` 标记**（列出这次修复改变了哪些既有行为，不只是声明修好了什么）。编排器据此：
 > - **P5b 评审入参追加** `>>SIDE-EFFECT:` 清单 → 让 code-reviewer 逆向假设"这些受影响点哪里被改坏了"
 > - **T1 回归范围**：dispatch 给 tester 的 `>>SCOPE:` 指令中，modules 维度**在 code-developer 声明的 modules 基础上追加** `SIDE-EFFECT` 涉及模块（受影响模块即使不是原始 Bug 模块也要定向回归）；**同时把 `>>SIDE-EFFECT:` 受影响点明细传给 tester**（tester 据此对无存量用例覆盖的点现场补逆向回归用例）
 > - code-developer 没输出 `>>SIDE-EFFECT:` 标记时，**编排器不自行推断**——把"无标记"事实传入 P5b，由 code-reviewer 用 `git diff` 推断受影响点并在报告开头列出，编排器比对评审报告推断与实际 diff 复核 → 复核不符（漏报副作用）则记入 `_MEMORY_CACHE.md`【未申报副作用】并回退 code-developer 补标
 >
-> **P8 触发路径精简（EP-4）：** 若 Bug 来自 P8（而非 P6c/P6d）且修复不改变契约字段/端点 → 走精简回路 `P5a → P5b → P6c(T1 定向) → 再次 P8`，**不重走** P6d/P7a/P7b。修复轮复用原 Phase 号加 `-rN`，不重开 Phase 计数。修复确改变契约时，编排器判断是否需要补 P7a/P7b。连续 2 轮 P8 仍发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户。
+> **P8 触发路径精简（EP-4）：** 若 Bug 来自 P8（而非 P6c/P6d）且修复不改变契约字段/端点 → 走精简回路 `P5a → P5b(含漂移节) → P6c(T1 定向) → 再次 P8`，**不重走** P6d/P7b。修复轮复用原 Phase 号加 `-rN`，不重开 Phase 计数。修复确需补契约同步时，编排器判断是否走 P7b。连续 2 轮 P8 仍发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户。
 
 **自适应恢复：**
 
@@ -207,16 +223,16 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P6a | `bash .opencode/scripts/check-testcase.sh` |
 | P6c | `bash .opencode/scripts/check-test.sh`（T1 定向：有 `>>SCOPE: modules=` 时只跑受影响模块+冒烟；无则 T2 全量；同指纹自动缓存跳过） |
 | P6d | `bash .opencode/scripts/check-integration.sh` |
-| P7a | `bash .opencode/scripts/check-drift.sh` |
+| P7a | 随 5b（评审报告含漂移节；仍以 `check-review.sh --name 代码评审` 门禁） |
 | 评审 1b/2b/3b/5b/6b | `bash .opencode/scripts/check-review.sh --name {需求/架构/详细设计/代码/测试用例}评审` |
 | P7b | 按漂移表 dispatch doc agent 同步后，跑对应门禁（见下方漂移表） |
 | P8 对抗性盲审 | `bash .opencode/scripts/check-review.sh --name 对抗性盲审`（验证盲审报告已产出） |
 
 **文档同步 / P7b 漂移表（doc 类型 → subagent → 门禁，一处定义多处用）：**
 
-`>>DOC_SYNC:` 标记或 P7a 漂移报告（`doc/tester/drift-report.md`）中的条目，按来源文档归类后逐类执行：
+`>>DOC_SYNC:` 标记或 **P5b+P7a 合并评审报告的 `## 漂移检测` 节**中的条目（报告内已写明漂移内容），按来源文档归类后逐类执行：
 
-1. 读取漂移报告，按漂移来源文档归类
+1. 读取评审报告漂移节，按漂移来源文档归类
 2. 按下表 dispatch 对应 doc subagent 同步
 3. 每类同步后跑对应门禁，全部通过才进入最终清理
 
@@ -239,13 +255,15 @@ pipeline 终点前（P7b 之后）、最终清理之前的**最后一关**。目
 2. 改动文件路径列表
 3. `_MEMORY_CACHE.md`【变更范围】（聚焦检查范围）
 
+**允许携带：** `>>DIFF:` 预取的变更文件列表 + diff 摘要（客观事实，助聚焦，不违反零上下文——见下 prompt）。
+
 **禁止携带：** P5b 评审报告、P6c 测试报告、P6d 集成验证报告、任何 Phase 的中间推理或设计决策理由。
 
 **Prompt 逆向引导（code-reviewer prompt 关键段）：**
 
 ```
 你是一个对抗性审查者。你的任务不是验证代码是否正确，而是假设它一定有问题。
-——你看到的只有：需求原文 {path}、改动文件 {files}、变更范围 {scope}。
+——你看到的只有：需求原文 {path}、改动文件 {files}(+ DIFF 摘要) 、变更范围 {scope}。
 ——你不知道设计决策理由、不知道之前的审查结论、不知道测试是否通过。
 ——找出至少 3 个独立的问题（P0/P1/P2），否则说明你的审查不够严格。
 格式：每个问题一行 【P等级】文件:行号: 问题描述
@@ -256,7 +274,7 @@ pipeline 终点前（P7b 之后）、最终清理之前的**最后一关**。目
 - P1/P2 → 不阻断，记录到 `_MEMORY_CACHE.md`【P8 未阻塞问题】，等用户决策
 - 连续 2 轮 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户
 
-**修复轮精简（EP-4）：** P8 修复只重走 `P5a → P5b → P6c(T1) → P8`，不重走 P6d/P7a/P7b。修复轮复用原 Phase 号加 `-rN`。
+**修复轮精简（EP-4）：** P8 修复只重走 `P5a → P5b(含漂移节) → P6c(T1) → P8`，不重走 P6d/P7b。修复轮复用原 Phase 号加 `-rN`。
 
 ## 上下文管理
 
