@@ -13,7 +13,7 @@ coding-pipeline 是一个**通用且专业**的软件工程编排器。它被安
 ### 分发态（源仓库 / 安装包）—— 通用且专业
 - **9 个 skills**：角色职责、流程编排、门禁 = 跨项目成立的通用软件工程方法论，不绑定任何具体技术栈
 - **scripts**：通用门禁 / 审计 / 日志
-- **rules（通用方法论库）**：code-discipline / arch-thinking / precise-location / endpoint-lock / doc-alignment / json-write-safety = 跨项目成立的专家标准，开箱即用
+- **rules（通用方法论库）**：code-discipline / arch-thinking / precise-location / endpoint-lock / doc-alignment / json-write-safety = 跨项目成立的专家标准，开箱即用（含 project-mirror，共 7 条）
 
 ### 资产态（安装进项目后）—— 项目独有，自成资产
 - 安装动作 = **把「分发态」复制进项目目录**，从此 `.opencode/` 整体归属于该项目
@@ -32,7 +32,7 @@ coding-pipeline 是一个**通用且专业**的软件工程编排器。它被安
 ## 4. 适配流程（install → adapt → evolve）
 
 1. **install**：复制通用工具（skills / scripts / rules）到项目，整套成为项目资产
-2. **adapt**：项目直接编辑 `.opencode/rules/` 与 skills 资源，把通用标准改写为项目专属；如需开关某条规则，改本项目 `opencode.json` 的 `instructions` 即可
+2. **adapt**：安装脚本自动运行 `project-init.sh` 探测项目语言/框架，生成 `.opencode/project/`（manifest.json + profile.md + conventions.md）供工具消费；项目在此基础上编辑 `.opencode/rules/` 与 skills 资源，把通用标准改写为项目专属；如需开关某条规则，改本项目 `opencode.json` 的 `instructions` 即可
 3. **evolve**：项目持续用工具产出并优化 `doc/` 资产与规则，工具随之越来越「懂」这个项目
 
 ## 5. 对当前实现的改造清单
@@ -59,3 +59,4 @@ coding-pipeline 是一个**通用且专业**的软件工程编排器。它被安
 | precise-location | 方法论级 | 可覆盖为项目模块定位约定 |
 | endpoint-lock | 方法论级 | 可覆盖为项目契约锁定级别 |
 | doc-alignment | 方法论级 | 可覆盖为项目文档同步流程 |
+| project-mirror | 机制级 | 建议保留（项目镜像消费/回写机制，与 project-init.sh 配合） |
