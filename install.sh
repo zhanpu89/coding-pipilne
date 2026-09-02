@@ -79,6 +79,14 @@ done
 # AGENTS.md（不安装）
 [ -f "$SCRIPT_DIR/AGENTS.md" ] && info "AGENTS.md 跳过（设计上不安装）" || true
 
+# ── 3.5 项目镜像引导（适配为该项目专职开发者）──
+echo ""
+echo -e "${CYAN}── 项目镜像引导 ──${NC}"
+if [ -f "$OPTDST/scripts/project-init.sh" ]; then
+  ( cd "$TARGET" && bash "$OPTDST/scripts/project-init.sh" )
+else
+  info "project-init.sh 未找到，跳过镜像引导"
+fi
 
 # ── 4. 验证 ──
 echo ""
@@ -92,14 +100,19 @@ ERRORS=0
 
 [ -d "$TARGET/.opencode/commands" ] && ok ".opencode/commands/ ($(find "$TARGET/.opencode/commands" -name '*.md' | wc -l) commands)" || info ".opencode/commands/ 不存在（可选）"
 
+# 数量校验：以源码库为准动态推导（适配未来添砖加瓦新增脚本/规则）
+EXPECT_SKILLS=$(find "$SCRIPT_DIR/.opencode/skills" -name SKILL.md | wc -l | tr -d ' ')
+EXPECT_RULES=$(find "$SCRIPT_DIR/.opencode/rules" -name '*.md' | wc -l | tr -d ' ')
+EXPECT_SCRIPTS=$(find "$SCRIPT_DIR/.opencode/scripts" -name '*.sh' | wc -l | tr -d ' ')
+
 SKILL_COUNT=$(find "$TARGET/.opencode/skills" -name SKILL.md | wc -l)
-[ "$SKILL_COUNT" -eq 9 ] && ok "$SKILL_COUNT/9 skills" || info "skills: $SKILL_COUNT/9（预期 9）"
+[ "$SKILL_COUNT" -eq "$EXPECT_SKILLS" ] && ok "$SKILL_COUNT/$EXPECT_SKILLS skills" || info "skills: $SKILL_COUNT/$EXPECT_SKILLS（预期 $EXPECT_SKILLS）"
 
 RULE_COUNT=$(find "$TARGET/.opencode/rules" -name '*.md' | wc -l)
-[ "$RULE_COUNT" -eq 6 ] && ok "$RULE_COUNT/6 rules" || info "rules: $RULE_COUNT/6"
+[ "$RULE_COUNT" -eq "$EXPECT_RULES" ] && ok "$RULE_COUNT/$EXPECT_RULES rules" || info "rules: $RULE_COUNT/$EXPECT_RULES"
 
 SCRIPT_COUNT=$(find "$TARGET/.opencode/scripts" -name '*.sh' | wc -l)
-[ "$SCRIPT_COUNT" -eq 15 ] && ok "$SCRIPT_COUNT/15 scripts" || info "scripts: $SCRIPT_COUNT/15（预期 15）"
+[ "$SCRIPT_COUNT" -eq "$EXPECT_SCRIPTS" ] && ok "$SCRIPT_COUNT/$EXPECT_SCRIPTS scripts" || info "scripts: $SCRIPT_COUNT/$EXPECT_SCRIPTS（预期 $EXPECT_SCRIPTS）"
 
 # check-opencode.sh 必须可执行（自举门禁需要）
 if [ -x "$TARGET/.opencode/scripts/check-opencode.sh" ]; then

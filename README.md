@@ -20,6 +20,34 @@
 | 🟡 **增量** | 有 DDL 变更或新增子模块 | P3a → P3b → P5a → P5b → P6a→P6b→P6c | 新增模块 / 加表 / 加字段（DDL 嵌入详设） |
 | 🔴 **全量** | 全新项目 / 跨模块重构 | Phase 1→2→3→5→6 全流程 | 从零开始的完整项目 |
 
+### 项目镜像（Project Mirror）—— 通用工具 → 项目专职开发者
+
+安装或首次运行时，`project-init.sh` 对目标项目做**通用语言探测**（Python/Java/Go/Node/Rust + polyglot + 前端框架 + 小程序），生成 `.opencode/project/` 项目镜像，让通用 pipeline 认识并适配具体项目：
+
+| 文件 | 内容 | 维护方 |
+|------|------|--------|
+| `manifest.json` | 机器可读字段：语言/前端/目录/构建测试命令 | project-init.sh 自动 |
+| `profile.md` | 技术栈 + 目录 + 分层约定 + 项目特色/踩坑 | 自动生成，agent 持续追加 |
+| `conventions.md` | 命名/分层/异常/事务/配置/测试约定骨架 | 自动生成骨架，agent 编码时提炼 |
+| `.gitignore` | 经验类产物（experience.md）不入库，画像/约定入库 | 自动 |
+
+**编排器每轮先读镜像**（0a），镜像已有的项目事实直接使用，不再重复探测；conventions 占位由 code-developer/task-decomposer 在产出后回填——这就是"添砖加瓦"，镜像随项目成长。
+
+**添砖加瓦闭环（运行时持续进化）：**
+
+```
+subagent 产出新约定（分层/命名/异常模式）
+  → 输出 >>PROJECT: {节} → {事实} 标记
+  → 编排器收集，运行 mirror-log.sh 追加到 conventions.md 对应节
+  → 后续所有 agent 通过全局 project-mirror 规则加载并遵守
+```
+
+- **消费侧**：新增全局规则 `project-mirror.md`，所有 subagent 工作前先读 conventions.md + profile.md 特色节，遵守项目约定而非通用模板（"具象优先"）。
+- **回写侧**：`mirror-log.sh` 幂等追加约定到 conventions.md；只回写稳定模式（≥2 同类实现证实 + 对未来有约束力），避免噪音污染镜像。
+- **能力侧**：self-evolve 的 EP 目标新增 `project-scripts`——本项目特有的 gate/helper 提升到 `.opencode/project/scripts/`（不混入通用层）。
+
+> 镜像与语言解耦：同一 manifest 结构适用于 Java/Go/Python/Node 任一语言项目；polyglot 项目以 manifest 的 languages 为准。
+
 ### 症状驱动的智能排错
 
 编排器不再仅按"文件在哪个层"判断影响域，而是通过任务描述的关键词推断**可能根因层**：
@@ -99,7 +127,8 @@ bash path/to/coding-pipeline/install.sh /path/to/your-project
 1. 复制 `.opencode/`（skills/scripts/rules/commands 等）
 2. 创建 `package.json` + `npm install`
 3. 复制根目录配置文件（opencode.json）
-4. 验证完整性（9 skills, 8 scripts, 5 rules）
+4. 运行 `project-init.sh` 生成 `.opencode/project/` 项目镜像（探测语言/前端/测试命令）
+5. 验证完整性（skills/rules/scripts 数量以源码库为准动态校验）
 
 ### 验证安装
 
@@ -219,6 +248,7 @@ DDL 嵌入详设文档中，由 task-decomposer 产出，不再单独成阶段�
 | 端锁定规则 | `endpoint-lock.md` | 发现 API/DB 契约不对齐时 STOP→READ→REPORT→WAIT |
 | 编码纪律 | `code-discipline.md` | 先思考再编码/简洁优先/手术式修改 |
 | 文档对齐 | `doc-alignment.md` | 编码期间禁止改契约，走 doc sync 流程 |
+| **项目镜像** | `project-mirror.md` | 所有 agent 工作前读 conventions/profile + `>>PROJECT:` 回写 |
 
 ---
 
@@ -250,8 +280,9 @@ your-project/
     │   ├── self-evolve/
     │   └── pipeline-orchestrator/
     ├── commands/       # /check-doc-drift（OpenCode 自动发现）
-    ├── rules/          # AI 行为约束
-    └── scripts/        # 10 个验证脚本
+    ├── rules/          # AI 行为约束（含 project-mirror.md）
+    ├── project/        # 项目镜像（manifest/profile/conventions，随项目成长）
+    └── scripts/        # 16 个验证脚本（含 project-init/mirror-log 引导）
 ```
 
 ---

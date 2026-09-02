@@ -18,9 +18,11 @@ PROJECT_NAME=$(basename "$(pwd)")
 [ -z "$VERBATIM" ] && echo "用法: log-feedback.sh \"<用户原话>\" [severity] [agent] [phase] [interpretation]" && exit 1
 case "$SEVERITY" in 1|2|3) ;; *) echo "severity 必须为 1(风格)/2(能力)/3(阻断)" && exit 1 ;; esac
 
-# JSON 转义：反斜杠与双引号（防止用户原话破坏 JSON-Lines）
+# JSON 转义：反斜杠/双引号/控制字符（防止用户原话破坏 JSON-Lines）
+# 注意：必须 perl -0777（slurp 整段）—— 逐行模式下 -p 会把真实换行当记录分隔符，
+#       导致出现多行 .jsonl 记录。先用 \r 防 \n 错位，再统一转义真实换行。
 json_escape() {
-  printf '%s' "$1" | sed 's/\\/\\\\/g; s/"/\\"/g'
+  printf '%s' "$1" | perl -0777 -pe 's/\\/\\\\/g; s/"/\\"/g; s/\t/\\t/g; s/\r/\\r/g; s/\n/\\n/g;'
 }
 V_ESC=$(json_escape "$VERBATIM")
 I_ESC=$(json_escape "$INTERPRET")

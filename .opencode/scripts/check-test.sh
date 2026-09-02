@@ -126,16 +126,30 @@ CACHE_KEY=""
 FP=""
 if [ -n "$SCOPE_MODULES" ]; then
   CACHE_KEY=$(echo "$SCOPE_MODULES" | tr ' ' '-' | tr -d '/\\')
-  SRC_TARGETS=""
+  # T1 定向：扫描受影响模块的源码+测试文件
+  FP=""
   for m in $SCOPE_MODULES; do
-    SRC_TARGETS="$SRC_TARGETS src/$m tests/test_${m}* tests/${m}"
+    FP="$FP$(find src/$m tests/test_${m}*.py tests/${m} tests/test_${m}*.go -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null)"
   done
+  FP=$(printf '%s' "$FP" | md5sum 2>/dev/null | cut -d' ' -f1)
 else
-  SRC_TARGETS="src tests"
+  # T2 全量：按语言推导实际源文件（不依赖固定目录）
+  case "$PROJECT_TYPE" in
+    python)   FP=$(find . \( -name "*.py" \) -not -path "./.*" -not -path "./doc/*" -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+    go)       FP=$(find . -name "*.go" -not -path "./.*" -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+    node|polyglot) FP=$(find . \( -name "*.js" -o -name "*.ts" -o -name "*.jsx" -o -name "*.tsx" \) -not -path "./node_modules/*" -not -path "./.*" -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+    rust)     FP=$(find . -name "*.rs" -not -path "./.*" -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+    java)     FP=$(find . -name "*.java" -not -path "./.*" -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+    *)        FP=$(find . -type f \( -name "*.java" -o -name "*.go" -o -name "*.py" -o -name "*.ts" -o -name "*.js" -o -name "*.rs" \) -not -path "./.*" -not -path "./node_modules/*" -not -path "./doc/*" 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1) ;;
+  esac
 fi
-# 指纹纳入构建/依赖文件（依赖或配置变化也会使缓存失效）
-BUILD_FILES="pom.xml build.gradle build.gradle.kts settings.gradle go.mod go.sum Cargo.toml Cargo.lock package.json package-lock.json requirements.txt pyproject.toml setup.py"
-FP=$(find $SRC_TARGETS $BUILD_FILES -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1)
+
+# 指纹纳入构建/依赖文件（依赖或配置变化也会使缓存失效）——全量模式追加
+if [ -z "$SCOPE_MODULES" ]; then
+  BUILD_FILES="pom.xml build.gradle build.gradle.kts settings.gradle go.mod go.sum Cargo.toml Cargo.lock package.json package-lock.json requirements.txt pyproject.toml setup.py"
+  BUILD_FP=$(find $BUILD_FILES -type f 2>/dev/null | sort | xargs md5sum 2>/dev/null | md5sum 2>/dev/null | cut -d' ' -f1)
+  [ -n "$BUILD_FP" ] && FP=$(printf '%s\n%s' "$FP" "$BUILD_FP" | md5sum 2>/dev/null | cut -d' ' -f1)
+fi
 CACHE_FILE="$CACHE_DIR/test-${PROJECT_TYPE}-${CACHE_KEY:-full}.cache"
 
 if [ -n "$FP" ] && [ -f "$CACHE_FILE" ]; then
@@ -260,7 +274,12 @@ $T"
         EXIT_CODE=$?
       elif grep -q '"test"' package.json 2>/dev/null; then
         echo "    运行 npm test..."
-        TEST_OUTPUT=$(npm test 2>&1)
+        if [ -n "$SCOPE_MODULES" ]; then
+          # 有 scope 但框架名未被 package.json 关键词识别 → 用 --testPathPattern 追加过滤
+          TEST_OUTPUT=$(npm test -- --testPathPattern="$SCOPE_MODULES" 2>&1)
+        else
+          TEST_OUTPUT=$(npm test 2>&1)
+        fi
         EXIT_CODE=$?
       elif [ -n "$TEST_FRAMEWORK" ] && command -v npx &>/dev/null; then
         echo "    运行 $TEST_FRAMEWORK..."

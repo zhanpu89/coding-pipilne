@@ -7,7 +7,8 @@
     ".opencode/rules/json-write-safety.md",
     ".opencode/rules/code-discipline.md",
     ".opencode/rules/doc-alignment.md",
-    ".opencode/rules/arch-thinking.md"
+    ".opencode/rules/arch-thinking.md",
+    ".opencode/rules/project-mirror.md"
   ],
   "agent": {
     "prd-writer": {

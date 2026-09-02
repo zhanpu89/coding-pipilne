@@ -99,6 +99,7 @@ description: |
 - `>>SCOPE:` — modules/endpoints/files 三个维度，供编排器定向测试/集成
 - `>>DOC_SYNC:` — 每处代码-文档偏差（编排器据此 dispatch doc agent 更新）
 - `>>FIXED:` — 修复模式中确认每项 Bug 已修复
+- `>>PROJECT:` — 从存量代码归纳的**稳定新约定**（≥2 实现证实 + 有约束力），如 `>>PROJECT: 命名规范 → service 接口以 Service 结尾`（编排器收集回写 conventions.md）
 
 ## 写入检查
 

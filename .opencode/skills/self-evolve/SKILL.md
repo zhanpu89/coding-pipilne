@@ -66,15 +66,24 @@ description: |
 ║ 🔧 进化提案 #[N]      针对: {tool/skill}   ║
 ║ 发现: {模式}  建议: {改什么地方/怎么改}      ║
 ║ 影响: {范围}                                 ║
-║ 目标:  {[opencode.json | SKILL.md | scripts | rules]}
+║ 目标:  {[opencode.json | SKILL.md | scripts | rules | project-scripts]}
 ║ [Y] 应用  [N] 忽略  [E] 编辑后应用         ║
 ╚════════════════════════════════════════════╝
 ```
 
+**目标选型：通用 vs 项目专属** — 这是 EP 最关键的判断：
+
+| 失败模式 | 目标 |
+|---------|------|
+| 所有项目都会踩的通用坑 | `scripts` / `SKILL.md` / `rules`（改通用层） |
+| **本项目特有**的模式（本项目统一的异常拦截、特殊事务策略、专属脚手架） | `project-scripts` — 生成 `.opencode/project/scripts/{name}.sh` 项目专属 gate/helper，并同步注册到 manifest 或 profile 的约束节 |
+
+**判断标准："换成另一个语言的项目，这个 EP 还成立吗？"**
+- 还成立 → 通用层
+- 不成立（绑定本项目技术栈/约定）→ project-scripts。**别把项目专属逻辑硬塞进通用 scripts**——那会让所有项目背上本项目包袱。
+
 用户确认 Y 后：
-- 目标为 `opencode.json` / AGENTS.md → 编排器统一执行更新
-- 目标为 `SKILL.md` → 直接修改
-- 目标为 scripts / rules → 修改后重新运行 `check-opencode.sh` 验证
+- 目标为 `project-scripts` → 创建 `.opencode/project/scripts/{name}.sh`，并确保可执行 + 在 profile.md「项目特色/约束」节登记说明；不纳入 check-opencode.sh 的通用脚本引用（它是项目镜像的一部分，不是通用层）。
 
 **Step 4：** 无发现则输出"当前所有工具运行正常，无需进化。"
 

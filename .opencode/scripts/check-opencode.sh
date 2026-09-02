@@ -103,6 +103,11 @@ REF_FILES=(
   ".opencode/scripts/check-testcase.sh"
   ".opencode/scripts/log-skill.sh"
   ".opencode/scripts/log-feedback.sh"
+  ".opencode/scripts/project-init.sh"
+  ".opencode/scripts/mirror-log.sh"
+  ".opencode/project/manifest.json"
+  ".opencode/project/profile.md"
+  ".opencode/project/conventions.md"
 )
 MISSING=0
 for f in "${REF_FILES[@]}"; do

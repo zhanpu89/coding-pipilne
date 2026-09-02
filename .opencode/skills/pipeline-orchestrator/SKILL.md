@@ -9,6 +9,19 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 ## 0. 先思考，再编排（全局统筹者的本能）
 
+**0a. 先读项目镜像（每轮开始必做）：** 如果 `.opencode/project/` 存在，直接**读** `manifest.json`（机器字段）+ `profile.md`（画像）+ `conventions.md`（约定），这是认识本项目的权威画像，无需 re-derive：
+
+```
+🪞 项目镜像: 语言 [manifest.json → language/primary_language]
+  前端 [frontend] | 源码目录 [source_dirs] | 测试命令 [test_command]
+  约定: 见 conventions.md 的分层/命名/异常节；画像见 profile.md
+```
+
+- **镜像里已有的项目事实直接用**，不要每次重新扫描推导（省时且更准）。
+- **镜像里标注为"提取中"的约定**（如 conventions.md 骨架占位），在本次任务的 code-developer/task-decomposer 产出后，把新归纳的项目事实追加回镜像（src 分层、命名、异常模式）——这是"添砖加瓦"。
+- **镜像存在但没生成过**（无 `.opencode/project/`）→ 先跑 `bash .opencode/scripts/project-init.sh` 生成，再继续。
+- 项目语言/前端倾向以 mirror 的 manifest 为准，覆盖 ad-hoc 文件探测的猜测。
+
 在扫描技术栈之前，先回答三个问题。这不是空想，是决定后面所有分派质量的地基：
 
 **① 用户真正要什么？** 复述用户请求，提炼不可妥协的目标（Non-negotiable Goal）和可以取舍的部分。把这句话写进 _MEMORY_CACHE.md，每个 Phase 都对着它校准——**如果你发现某个 subagent 的产出偏离了这个目标，那是你的失职，不是它的。**
@@ -45,7 +58,7 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 
 ```
 ① 裁剪上下文 — 只留 _MEMORY_CACHE.md + 本 Phase 指令
-② dispatch task(subagent_type) — 入参只含最少上下文
+② dispatch task(subagent_type) — 入参只含最少上下文。**如果镜像存在，把 conventions.md 的关键约定 + profile.md 的项目特色节内联进 dispatch prompt**（几个关键行即可，不整篇粘贴），让 subagent 上手就按项目约定干活，不靠它自己重读整个镜像。
 ③ 记录决策 — ai_memory_memory_add_decision() + update_summary() + log-skill.sh（每次 dispatch 后记录调用日志）
 ④ OODA 反思 — 观察结果，判断质量，决定是否调整下一 Phase
 ```
@@ -109,6 +122,21 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 【变更范围】modules: order,payment | endpoints: POST /api/orders/*
 ```
 后续按 scope 定向测试/curl/漂移检测。无标记时 scope=full。
+
+**文档同步：** code-developer 输出 `>>DOC_SYNC:` 标记时，按类型 dispatch 对应 subagent：
+
+| 文档 | subagent |
+|------|----------|
+| `doc/detailed/*.md` | `task-decomposer` |
+| `doc/arch/SAD.md` | `system-architect` |
+| `doc/prd/*.md` | `prd-writer` |
+
+**镜像回写（添砖加瓦）：** subagent 输出 `>>PROJECT: {节} → {事实}` 标记时（如 `>>PROJECT: 命名规范 → 用户 service 字段驼峰`），收集后运行 `bash .opencode/scripts/mirror-log.sh "{节}" "{事实}"` 追加到 `conventions.md` 对应节。**镜像事实是"从存量代码归纳的稳定模式"，不是单次实现细节**——只有符合这两条才回写：① ≥2 个同类实现证实 ② 对未来编码有约束力。编排器每收集一批跑一次，不逐条跑。
+
+```
+收到 >>PROJECT: 命名规范 → service 字段驼峰   → mirror-log.sh "命名规范" "service 字段驼峰"
+收到 >>PROJECT: 异常 → 统一全局拦截器          → mirror-log.sh "异常与错误处理" "统一全局拦截器"
+```
 
 **Bug-fix Loop（P6c/P6d 发现 Bug → 回退 P5a）：**
 

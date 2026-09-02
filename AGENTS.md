@@ -12,6 +12,7 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | `doc-alignment.md` | **code-developer + code-reviewer** | 全局 `instructions` 加载，>DOC_SYNC 契约对齐 |
 | `arch-thinking.md` | **code-developer** | 全局 `instructions` 加载，编码前三关检查（查已有/定位置/验影响） |
 | `json-write-safety.md` | **所有写文件 agent** | 全局 `instructions` 加载 + SKILL.md 中按需引用；写入容错 |
+| `project-mirror.md` | **所有 agent** | 全局 `instructions` 加载；镜像消费（先读 conventions）+ 回写（`>>PROJECT:` 标记） |
 
 ## Scripts（`.opencode/scripts/`）
 
@@ -32,6 +33,7 @@ Skills: `.opencode/skills/{name}/SKILL.md` loaded as subagent `prompt` via `open
 | `check-testcase.sh` | 6a | 测试用例：文件存在性 + TC-ID 格式验证 + 类型分布统计 |
 | `log-skill.sh` | 全部 | Subagent 调用日志（JSON-Lines，ISO 时间戳）；编排器每 dispatch 后调用，供 self-evolve 分析 |
 | `log-feedback.sh` | 全部 | 用户反馈日志（纠正/吐槽/改向 verbatim + 严重度）；编排器每次收到用户纠正时调用，供 self-evolve 分析 |
+| `project-init.sh` | install/Step0 | **项目镜像引导**：通用语言探测（多语言/polyglot/前端/小程序）→ 生成 `.opencode/project/`（manifest.json + profile.md + conventions.md + .gitignore），将通用 pipeline 适配为项目专职开发者 |
 
 ## Conventions
 
