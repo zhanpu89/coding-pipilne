@@ -227,7 +227,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P6a | `bash .opencode/scripts/check-testcase.sh` |
 | P6c | `bash .opencode/scripts/check-test.sh`（T1 定向：有 `>>SCOPE: modules=` 时只跑受影响模块+冒烟；无则 T2 全量；同指纹自动缓存跳过） |
 | P6d | `bash .opencode/scripts/check-integration.sh` |
-| P7a | 随 5b（评审报告含漂移节作为内容输入）：先跑 `bash .opencode/scripts/check-drift.sh`（客观：规范文档完整性/P7 同步记录/增量架构合规），再读评审报告漂移节确认无主观遗漏 |
+| P7a | 随 5b（评审报告含漂移节作为内容输入）：先跑 `bash .opencode/scripts/check-drift.sh <评审报告路径>`（传 5b 评审报告，客观校验：规范文档完整性/P7 同步记录/增量架构合规；并行 P5b 多组时传各组报告分别校验），再读评审报告漂移节确认无主观遗漏 |
 | 评审 1b/2b/3b/5b/6b | `bash .opencode/scripts/check-review.sh --name {需求/架构/详细设计/代码/测试用例}评审` |
 | P7b | 按漂移表 dispatch doc agent 同步后，跑对应门禁（见下方漂移表） |
 | P8 对抗性盲审 | `bash .opencode/scripts/check-review.sh --name 对抗性盲审`（验证盲审报告已产出） |
