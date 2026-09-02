@@ -71,7 +71,7 @@ description: |
 
 加载 `resources/filling-guide.md` + `templates/common.md` + `templates/end-specific.md`（按端类型跳转 `##` 节）。多端先 `_概览.md`，再各端独立文档。快速模式直接跳此步。
 
-**AC 质量标准：** 每个 M/S 级功能 AC 用 Given/When/Then 格式。Given 不含技术前提，When 是用户操作，Then 是可观测结果。反例："Given 用户已登录"→ 正例："Given 用户处于订单详情页"。
+**AC 质量标准：** 每个 M/S 级功能 AC 用 Given/When/Then 格式。Given 不含技术前提，When 是用户操作，Then 是可观测结果。反例："Given 用户已登录"→ 正例："Given 用户处于订单详情页"。**AC 是 BR 的可验证投射：每个功能按 BR 条数配 2~5 条 AC（成功路径 + 边界 + 失败路径各至少 1 条），单条 AC 的功能视为覆盖不足**——只有成功路径的 AC 会在测试阶段漏掉边界与异常，等于给下游虚假安全感。
 
 **NFR 基准（未指定时按行业默认）：**
 - Web 首屏 <3s，移动端 <2s
@@ -82,7 +82,7 @@ description: |
 ### 质量自检（Step 3 后，输出前）
 
 逐项确认：
-- □ 每个 M/S 功能至少有 1 个 AC
+- □ 每个 M/S 功能有 2~5 条 AC，且成功/边界/失败路径各 ≥1（单条 AC 的 M/S 功能 = 不通过）
 - □ 无技术术语（框架/语言/API 名）
 - □ NFR 有具体数字（非"高性能"/"高可用"）
 - □ 多个端时业务描述一致（相同功能在端间表述不矛盾）
