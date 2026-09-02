@@ -39,7 +39,7 @@ description: 全流程软件工程编排器。五级强度自适配：🐛轻量
 - **技术栈扫描：** `pom.xml`/`build.gradle` → Java；`go.mod` → Go；`Cargo.toml` → Rust；`pyproject.toml`/`requirements.txt` → Python；`package.json+server/` → Node；`vue`/`react` → 前端框架
 - **影响域层级：** 视图层 → API/数据层 → 后端路由/控制器 → 后端业务/数据层 → DDL/数据模型 → 跨模块
 - **症状→根因推断（前端症状不锁定前端，先排除后端）：** 涉及创建/保存/删除/搜索的数据操作 → 先 API 直达测试排除后端再定论
-- **强度匹配：** 按范围选强度，整体序列写入 `_MEMORY_CACHE.md`
+- **强度匹配：** 按范围选强度（下表），整体序列写入 `_MEMORY_CACHE.md`。**强度不是一次定死**——中途发现实际复杂度超出预估（扫描漏了 DDL/跨模块/评审 P1 堆积）时按 `resources/orchestration-decisions.md` 第二节升/降档（升档重写序列，不沿用原序列）
 
 | 影响范围 | 强度 | Phase 序列 |
 |----------|------|-----------|
@@ -97,7 +97,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | 门禁是否通过？ | 有门禁的 Phase | 失败 → 走 🅱 恢复 |
 | 变更范围是否合理？ | P5a 后 | scope 超预期 → 收窄范围 |
 | 是否有跨 Phase 风险？ | 任意 Phase | 有 → 记录风险到 _MEMORY_CACHE.md |
-| 是否需要调整强度？ | 任意 Phase | 超时/失败多 → 升档；顺畅 → 降档 |
+| 是否需要调整强度？ | 任意 Phase | 超时/失败多 → 升档；顺畅 → 降档。**触发信号与动作见 `resources/orchestration-decisions.md` 第二节（升档必须重写 Phase 序列 + add_decision 留痕）** |
 
 > 反思结果写入 `_MEMORY_CACHE.md` 的决策记录，不打断当前 Phase 流程。
 
@@ -122,7 +122,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 | P7b 契约同步 | 按漂移类型 dispatch doc agent（task-decomposer/system-architect/prd-writer） | 文档更新 |
 | P8 对抗性盲审 | `code-reviewer`（入参含 `>>MODE: blind` + 需求原文路径 + 改动文件 + 变更范围） | 盲审报告 |
 
-> 裁剪上下文和记忆检索参考 `resources/retrieval-strategy.md`。决策记录质量参考 `resources/decision-quality.md`。
+> 裁剪上下文和记忆检索参考 `resources/retrieval-strategy.md`。决策记录质量参考 `resources/decision-quality.md`。**并行/升降档/恢复/止损的调度判断参考 `resources/orchestration-decisions.md`。**
 
 **评审类 dispatch 预取（P5b/P8 及其他 code-reviewer dispatch 前必做，省冷启动探索）：** 主 agent 先在本地快速收集以下信息，内联进 dispatch prompt，让评审者**不用自己跑 git diff / 全库搜索**：
 - `git diff --stat`（本次变更文件+行数摘要）
@@ -166,7 +166,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 → 是 → T2 全量回归（一次收尾确认，防止定向盲区）→ 有 DOC_SYNC？→ 同步契约 → 继续
 ```
 
-> **⚠️ 并行修复（Bug-fix Loop 提速第一步）：** code-developer 修复前，先按**变更文件归属模块**把 Bug 清单分组。**属于不同模块、无共享文件依赖的 Bug 组并行 dispatch 多个 code-developer**（同一模块的 Bug 仍合并在一个 agent）。并行组数上限 3，防止上下文过载。
+> **⚠️ 并行修复（Bug-fix Loop 提速第一步）：** code-developer 修复前，先按**变更文件归属模块**把 Bug 清单分组。**属于不同模块、无共享文件依赖的 Bug 组并行 dispatch 多个 code-developer**（同一模块的 Bug 仍合并在一个 agent）。并行组数上限 3，防止上下文过载。**判"可并行"用 `resources/orchestration-decisions.md` 第一节三问（独立成败/文件隔离/边界清晰），全 Yes 才并**。
 > - 每个并行 agent 的 prompt **指明各自负责的 Bug 组 + 明确"禁止改其他组的文件"**（文件级隔离，靠 prompt 声明约束）
 > - 全部并行 agent 返回后统一收集 `>>SCOPE:` + `>>FIXED:` + `>>SIDE-EFFECT:`，再进 P5b 评审和 T1 回归
 > - 判定非独立（共享文件/同模块）时**不并行**，退回串行合并
@@ -184,7 +184,7 @@ bash .opencode/scripts/log-feedback.sh "<用户原话 verbatim>" <severity> <涉
 >
 > **P8 触发路径精简（EP-4）：** 若 Bug 来自 P8（而非 P6c/P6d）且修复不改变契约字段/端点 → 走精简回路 `P5a → P5b(含漂移节) → P6c(T1 定向) → 再次 P8`，**不重走** P6d/P7b。修复轮复用原 Phase 号加 `-rN`，不重开 Phase 计数。修复确需补契约同步时，编排器判断是否走 P7b。连续 2 轮 P8 仍发现 P0 → 输出未解决清单到 `_MEMORY_CACHE.md` → 报告用户。
 
-**自适应恢复：**
+**自适应恢复（选择依据见 `resources/orchestration-decisions.md` 第三节——先查根因在哪个 Phase，避免原地打转）：**
 
 | 情况 | 处理 |
 |------|------|
